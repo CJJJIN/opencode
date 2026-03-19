@@ -11,6 +11,7 @@ import {
   Prompt,
   usePrompt,
   ImageAttachmentPart,
+  DocumentAttachmentPart,
   AgentPart,
   FileAttachmentPart,
 } from "@/context/prompt"
@@ -245,6 +246,9 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const working = createMemo(() => status()?.type !== "idle")
   const imageAttachments = createMemo(() =>
     prompt.current().filter((part): part is ImageAttachmentPart => part.type === "image"),
+  )
+  const documentAttachments = createMemo(() =>
+    prompt.current().filter((part): part is DocumentAttachmentPart => part.type === "document"),
   )
 
   const [store, setStore] = createStore<{
@@ -821,13 +825,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const handleInput = () => {
     const rawParts = parseFromDOM()
     const images = imageAttachments()
+    const docs = documentAttachments()
     const cursorPosition = getCursorPosition(editorRef)
     const rawText =
       rawParts.length === 1 && rawParts[0]?.type === "text"
         ? rawParts[0].content
         : rawParts.map((p) => ("content" in p ? p.content : "")).join("")
     const hasNonText = rawParts.some((part) => part.type !== "text")
-    const shouldReset = !NON_EMPTY_TEXT.test(rawText) && !hasNonText && images.length === 0
+    const shouldReset = !NON_EMPTY_TEXT.test(rawText) && !hasNonText && images.length === 0 && docs.length === 0
 
     if (shouldReset) {
       closePopover()
@@ -862,12 +867,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     resetHistoryNavigation()
 
     mirror.input = true
-    prompt.set([...rawParts, ...images], cursorPosition)
+    prompt.set([...rawParts, ...images, ...docs], cursorPosition)
     queueScroll()
   }
 
   const addPart = (part: ContentPart) => {
-    if (part.type === "image") return false
+    if (part.type === "image" || part.type === "document") return false
 
     const selection = window.getSelection()
     if (!selection) return false
@@ -1257,6 +1262,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         />
         <PromptImageAttachments
           attachments={imageAttachments()}
+          documents={documentAttachments()}
           onOpen={(attachment) =>
             dialog.show(() => <ImagePreview src={attachment.dataUrl} alt={attachment.filename} />)
           }

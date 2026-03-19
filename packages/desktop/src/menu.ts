@@ -7,6 +7,12 @@ import { installCli } from "./cli"
 import { initI18n, t } from "./i18n"
 import { runUpdater, UPDATER_ENABLED } from "./updater"
 
+const isAudit = __OPENCODE_EDITION__ === "audit"
+
+function defined<T>(value: T | undefined): value is T {
+  return value !== undefined
+}
+
 export async function createMenu(trigger: (id: string) => void) {
   if (ostype() !== "macos") return
 
@@ -25,10 +31,12 @@ export async function createMenu(trigger: (id: string) => void) {
             action: () => runUpdater({ alertOnFail: true }),
             text: t("desktop.menu.checkForUpdates"),
           }),
-          await MenuItem.new({
-            action: () => installCli(),
-            text: t("desktop.menu.installCli"),
-          }),
+          !isAudit
+            ? await MenuItem.new({
+                action: () => installCli(),
+                text: t("desktop.menu.installCli"),
+              })
+            : undefined,
           await MenuItem.new({
             action: async () => window.location.reload(),
             text: t("desktop.menu.reloadWebview"),
@@ -58,7 +66,7 @@ export async function createMenu(trigger: (id: string) => void) {
           await PredefinedMenuItem.new({
             item: "Quit",
           }),
-        ].filter(Boolean),
+        ].filter(defined),
       }),
       await Submenu.new({
         text: t("desktop.menu.file"),
@@ -79,7 +87,7 @@ export async function createMenu(trigger: (id: string) => void) {
           await PredefinedMenuItem.new({
             item: "CloseWindow",
           }),
-        ],
+        ].filter(defined),
       }),
       await Submenu.new({
         text: t("desktop.menu.edit"),
@@ -105,7 +113,7 @@ export async function createMenu(trigger: (id: string) => void) {
           await PredefinedMenuItem.new({
             item: "SelectAll",
           }),
-        ],
+        ].filter(defined),
       }),
       await Submenu.new({
         text: t("desktop.menu.view"),
@@ -115,15 +123,19 @@ export async function createMenu(trigger: (id: string) => void) {
             text: t("desktop.menu.view.toggleSidebar"),
             accelerator: "Cmd+B",
           }),
-          await MenuItem.new({
-            action: () => trigger("terminal.toggle"),
-            text: t("desktop.menu.view.toggleTerminal"),
-            accelerator: "Ctrl+`",
-          }),
-          await MenuItem.new({
-            action: () => trigger("fileTree.toggle"),
-            text: t("desktop.menu.view.toggleFileTree"),
-          }),
+          ...(!isAudit
+            ? [
+                await MenuItem.new({
+                  action: () => trigger("terminal.toggle"),
+                  text: t("desktop.menu.view.toggleTerminal"),
+                  accelerator: "Ctrl+`",
+                }),
+                await MenuItem.new({
+                  action: () => trigger("fileTree.toggle"),
+                  text: t("desktop.menu.view.toggleFileTree"),
+                }),
+              ]
+            : []),
           await PredefinedMenuItem.new({
             item: "Separator",
           }),

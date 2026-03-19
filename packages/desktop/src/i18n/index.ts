@@ -136,24 +136,40 @@ function pickLocale(value: unknown): Locale | null {
   return parseLocale(record.locale)
 }
 
+const isAudit = __OPENCODE_EDITION__ === "audit"
+
+const auditOverrides: Partial<Dictionary> = {
+  "desktop.menu.app": "AuditHelper",
+  "desktop.menu.help.documentation": "AuditHelper Documentation",
+  "desktop.updater.none.message": "You are already using the latest version of AuditHelper",
+  "desktop.updater.downloaded.prompt":
+    "Version {{version}} of AuditHelper has been downloaded, would you like to install it and relaunch?",
+  "desktop.cli.error.sidecarMissing": "AuditHelper CLI binary is missing. Try reinstalling the desktop app.",
+  "desktop.cli.installed.message": "CLI installed to {{path}}\n\nRestart your terminal to use the 'audithelper' command.",
+}
+
 const base = i18n.flatten({ ...appEn, ...desktopEn })
 
 function build(locale: Locale): Dictionary {
-  if (locale === "en") return base
-  if (locale === "zh") return { ...base, ...i18n.flatten(appZh), ...i18n.flatten(desktopZh) }
-  if (locale === "zht") return { ...base, ...i18n.flatten(appZht), ...i18n.flatten(desktopZht) }
-  if (locale === "de") return { ...base, ...i18n.flatten(appDe), ...i18n.flatten(desktopDe) }
-  if (locale === "es") return { ...base, ...i18n.flatten(appEs), ...i18n.flatten(desktopEs) }
-  if (locale === "fr") return { ...base, ...i18n.flatten(appFr), ...i18n.flatten(desktopFr) }
-  if (locale === "da") return { ...base, ...i18n.flatten(appDa), ...i18n.flatten(desktopDa) }
-  if (locale === "ja") return { ...base, ...i18n.flatten(appJa), ...i18n.flatten(desktopJa) }
-  if (locale === "pl") return { ...base, ...i18n.flatten(appPl), ...i18n.flatten(desktopPl) }
-  if (locale === "ru") return { ...base, ...i18n.flatten(appRu), ...i18n.flatten(desktopRu) }
-  if (locale === "ar") return { ...base, ...i18n.flatten(appAr), ...i18n.flatten(desktopAr) }
-  if (locale === "no") return { ...base, ...i18n.flatten(appNo), ...i18n.flatten(desktopNo) }
-  if (locale === "br") return { ...base, ...i18n.flatten(appBr), ...i18n.flatten(desktopBr) }
-  if (locale === "bs") return { ...base, ...i18n.flatten(appBs), ...i18n.flatten(desktopBs) }
-  return { ...base, ...i18n.flatten(appKo), ...i18n.flatten(desktopKo) }
+  let dict: Dictionary
+  if (locale === "en") dict = base
+  else if (locale === "zh") dict = { ...base, ...i18n.flatten(appZh), ...i18n.flatten(desktopZh) }
+  else if (locale === "zht") dict = { ...base, ...i18n.flatten(appZht), ...i18n.flatten(desktopZht) }
+  else if (locale === "de") dict = { ...base, ...i18n.flatten(appDe), ...i18n.flatten(desktopDe) }
+  else if (locale === "es") dict = { ...base, ...i18n.flatten(appEs), ...i18n.flatten(desktopEs) }
+  else if (locale === "fr") dict = { ...base, ...i18n.flatten(appFr), ...i18n.flatten(desktopFr) }
+  else if (locale === "da") dict = { ...base, ...i18n.flatten(appDa), ...i18n.flatten(desktopDa) }
+  else if (locale === "ja") dict = { ...base, ...i18n.flatten(appJa), ...i18n.flatten(desktopJa) }
+  else if (locale === "pl") dict = { ...base, ...i18n.flatten(appPl), ...i18n.flatten(desktopPl) }
+  else if (locale === "ru") dict = { ...base, ...i18n.flatten(appRu), ...i18n.flatten(desktopRu) }
+  else if (locale === "ar") dict = { ...base, ...i18n.flatten(appAr), ...i18n.flatten(desktopAr) }
+  else if (locale === "no") dict = { ...base, ...i18n.flatten(appNo), ...i18n.flatten(desktopNo) }
+  else if (locale === "br") dict = { ...base, ...i18n.flatten(appBr), ...i18n.flatten(desktopBr) }
+  else if (locale === "bs") dict = { ...base, ...i18n.flatten(appBs), ...i18n.flatten(desktopBs) }
+  else dict = { ...base, ...i18n.flatten(appKo), ...i18n.flatten(desktopKo) }
+
+  if (isAudit) return { ...dict, ...auditOverrides } as Dictionary
+  return dict
 }
 
 const state = {
@@ -175,7 +191,8 @@ export function initI18n(): Promise<Locale> {
   if (cached) return cached
 
   const promise = (async () => {
-    const store = await Store.load("opencode.global.dat").catch(() => null)
+    const storeName = isAudit ? "audithelper.global.dat" : "opencode.global.dat"
+    const store = await Store.load(storeName).catch(() => null)
     if (!store) return state.locale
 
     const raw = await store.get("language").catch(() => null)

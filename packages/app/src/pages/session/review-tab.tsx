@@ -10,6 +10,7 @@ import type { SelectedLineRange } from "@/context/file"
 import { useSDK } from "@/context/sdk"
 import { useLayout } from "@/context/layout"
 import type { LineComment } from "@/context/comments"
+import { isAudit } from "@/utils/edition"
 
 export type DiffStyle = "unified" | "split"
 
@@ -38,6 +39,7 @@ export interface SessionReviewTabProps {
 }
 
 export function SessionReviewTab(props: SessionReviewTabProps) {
+  if (isAudit) return null
   let scroll: HTMLDivElement | undefined
   let restoreFrame: number | undefined
   let userInteracted = false

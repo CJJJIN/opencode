@@ -8,6 +8,7 @@ import { Instance } from "../project/instance"
 import { Truncate } from "../tool/truncation"
 import { Auth } from "../auth"
 import { ProviderTransform } from "../provider/transform"
+import { Flag } from "../flag/flag"
 
 import PROMPT_GENERATE from "./generate.txt"
 import PROMPT_COMPACTION from "./prompt/compaction.txt"
@@ -75,25 +76,69 @@ export namespace Agent {
     const user = PermissionNext.fromConfig(cfg.permission ?? {})
 
     const result: Record<string, Info> = {
-      build: {
-        name: "build",
-        description: "The default agent. Executes tools based on configured permissions.",
-        options: {},
-        permission: PermissionNext.merge(
-          defaults,
-          PermissionNext.fromConfig({
-            question: "allow",
-            plan_enter: "allow",
-          }),
-          user,
-        ),
-        mode: "primary",
-        native: true,
-      },
+      build: Flag.isAuditEdition
+        ? {
+            name: "audit",
+            description:
+              "Document analysis agent. Specialized for reading, analyzing, and generating Word and Excel documents. Cannot edit code or execute shell commands.",
+            options: {},
+            permission: PermissionNext.merge(
+              defaults,
+              PermissionNext.fromConfig({
+                question: "allow",
+                bash: "deny",
+                edit: "deny",
+                write: "deny",
+                glob: "deny",
+                grep: "deny",
+                codesearch: "deny",
+                skill: "deny",
+                apply_patch: "deny",
+                task: "deny",
+                plan_enter: "deny",
+                plan_exit: "deny",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+            prompt: `You are an AI assistant specialized in document analysis and report generation. Your primary capabilities are:
+
+- Reading and analyzing Word (.docx) and Excel (.xlsx) documents
+- Extracting structured information from documents
+- Generating professional reports in Word and Excel formats
+- Answering questions about document contents
+- Providing document summaries and insights
+
+You have access to these document tools:
+- docx_read: Read Word documents
+- xlsx_read: Read Excel spreadsheets
+- doc_analyze: Analyze document structure and metadata
+- docx_write: Generate Word reports
+- xlsx_write: Generate Excel spreadsheets
+
+You cannot edit code, execute shell commands, or access the file system beyond reading and writing documents. Focus on helping users understand and work with their documents effectively.`,
+          }
+        : {
+            name: "build",
+            description: "The default agent. Executes tools based on configured permissions.",
+            options: {},
+            permission: PermissionNext.merge(
+              defaults,
+              PermissionNext.fromConfig({
+                question: "allow",
+                plan_enter: "allow",
+              }),
+              user,
+            ),
+            mode: "primary",
+            native: true,
+          },
       plan: {
         name: "plan",
         description: "Plan mode. Disallows all edit tools.",
         options: {},
+        hidden: Flag.isAuditEdition,
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({
@@ -116,6 +161,7 @@ export namespace Agent {
       general: {
         name: "general",
         description: `General-purpose agent for researching complex questions and executing multi-step tasks. Use this agent to execute multiple units of work in parallel.`,
+        hidden: Flag.isAuditEdition,
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({
@@ -130,6 +176,7 @@ export namespace Agent {
       },
       explore: {
         name: "explore",
+        hidden: Flag.isAuditEdition,
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({

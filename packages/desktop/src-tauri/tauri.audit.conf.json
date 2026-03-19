@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "AuditHelper",
+  "identifier": "com.techhelper.audit",
+  "mainBinaryName": "AuditHelper",
+  "bundle": {
+    "icon": [
+      "icons/audit/32x32.png",
+      "icons/audit/128x128.png",
+      "icons/audit/128x128@2x.png",
+      "icons/audit/icon.icns",
+      "icons/audit/icon.ico"
+    ],
+    "externalBin": ["sidecars/opencode-cli"],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/audit/icon.ico"
+      }
+    },
+    "linux": {
+      "rpm": {
+        "compression": {
+          "type": "none"
+        }
+      }
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["audithelper"]
+      }
+    }
+  }
+}

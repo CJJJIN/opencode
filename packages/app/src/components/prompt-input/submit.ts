@@ -10,7 +10,7 @@ import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
 import { useLocal } from "@/context/local"
 import { usePermission } from "@/context/permission"
-import { type ContextItem, type ImageAttachmentPart, type Prompt, usePrompt } from "@/context/prompt"
+import { type ContextItem, type ImageAttachmentPart, type DocumentAttachmentPart, type Prompt, usePrompt } from "@/context/prompt"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { Identifier } from "@/utils/id"
@@ -50,9 +50,12 @@ const draftText = (prompt: Prompt) => prompt.map((part) => ("content" in part ? 
 
 const draftImages = (prompt: Prompt) => prompt.filter((part): part is ImageAttachmentPart => part.type === "image")
 
+const draftDocuments = (prompt: Prompt) => prompt.filter((part): part is DocumentAttachmentPart => part.type === "document")
+
 export async function sendFollowupDraft(input: FollowupSendInput) {
   const text = draftText(input.draft.prompt)
   const images = draftImages(input.draft.prompt)
+  const documents = draftDocuments(input.draft.prompt)
   const [, setStore] = input.globalSync.child(input.draft.sessionDirectory)
 
   const setBusy = () => {
@@ -108,6 +111,7 @@ export async function sendFollowupDraft(input: FollowupSendInput) {
     prompt: input.draft.prompt,
     context: input.draft.context,
     images,
+    documents,
     text,
     sessionID: input.draft.sessionID,
     messageID,
@@ -287,9 +291,10 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const currentPrompt = prompt.current()
     const text = currentPrompt.map((part) => ("content" in part ? part.content : "")).join("")
     const images = input.imageAttachments().slice()
+    const documents = currentPrompt.filter((part): part is DocumentAttachmentPart => part.type === "document")
     const mode = input.mode()
 
-    if (text.trim().length === 0 && images.length === 0 && input.commentCount() === 0) {
+    if (text.trim().length === 0 && images.length === 0 && documents.length === 0 && input.commentCount() === 0) {
       if (input.working()) abort()
       return
     }

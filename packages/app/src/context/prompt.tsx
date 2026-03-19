@@ -35,7 +35,16 @@ export interface ImageAttachmentPart {
   dataUrl: string
 }
 
-export type ContentPart = TextPart | FileAttachmentPart | AgentPart | ImageAttachmentPart
+export interface DocumentAttachmentPart {
+  type: "document"
+  id: string
+  filename: string
+  mime: string
+  /** Absolute path to the saved document file */
+  path: string
+}
+
+export type ContentPart = TextPart | FileAttachmentPart | AgentPart | ImageAttachmentPart | DocumentAttachmentPart
 export type Prompt = ContentPart[]
 
 export type FileContextItem = {
@@ -70,6 +79,8 @@ function isPartEqual(partA: ContentPart, partB: ContentPart) {
       return partB.type === "agent" && partA.name === partB.name
     case "image":
       return partB.type === "image" && partA.id === partB.id
+    case "document":
+      return partB.type === "document" && partA.id === partB.id
   }
 }
 
@@ -90,6 +101,7 @@ function clonePart(part: ContentPart): ContentPart {
   if (part.type === "text") return { ...part }
   if (part.type === "image") return { ...part }
   if (part.type === "agent") return { ...part }
+  if (part.type === "document") return { ...part }
   return {
     ...part,
     selection: cloneSelection(part.selection),

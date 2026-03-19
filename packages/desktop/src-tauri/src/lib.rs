@@ -581,7 +581,9 @@ fn opencode_db_path() -> Result<PathBuf, &'static str> {
         }
     };
 
-    Ok(data_home.join("opencode").join("opencode.db"))
+    let dir_name = if cfg!(feature = "audit-edition") { "audithelper" } else { "opencode" };
+    let db_name = if cfg!(feature = "audit-edition") { "audithelper.db" } else { "opencode.db" };
+    Ok(data_home.join(dir_name).join(db_name))
 }
 
 // Creates a `once` listener for the specified event and returns a future that resolves

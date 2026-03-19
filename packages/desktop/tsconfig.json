@@ -18,5 +18,5 @@
     "types": ["vite/client"]
   },
   "references": [{ "path": "../app" }],
-  "include": ["src", "package.json"]
+  "include": ["src", "package.json", "../app/src/env.d.ts", "../ui/src/env.d.ts"]
 }

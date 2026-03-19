@@ -47,13 +47,14 @@ export namespace Config {
   // Managed settings directory for enterprise deployments (highest priority, admin-controlled)
   // These settings override all user and project settings
   function systemManagedConfigDir(): string {
+    const dirName = Flag.isAuditEdition ? "audithelper" : "opencode"
     switch (process.platform) {
       case "darwin":
-        return "/Library/Application Support/opencode"
+        return `/Library/Application Support/${dirName}`
       case "win32":
-        return path.join(process.env.ProgramData || "C:\\ProgramData", "opencode")
+        return path.join(process.env.ProgramData || "C:\\ProgramData", dirName)
       default:
-        return "/etc/opencode"
+        return `/etc/${dirName}`
     }
   }
 

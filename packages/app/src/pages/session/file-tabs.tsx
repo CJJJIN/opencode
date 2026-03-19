@@ -18,6 +18,7 @@ import { usePrompt } from "@/context/prompt"
 import { getSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
+import { isAudit } from "@/utils/edition"
 
 function FileCommentMenu(props: {
   moreLabel: string
@@ -53,6 +54,7 @@ function FileCommentMenu(props: {
 }
 
 export function FileTabContent(props: { tab: string }) {
+  if (isAudit) return null
   const file = useFile()
   const comments = useComments()
   const language = useLanguage()

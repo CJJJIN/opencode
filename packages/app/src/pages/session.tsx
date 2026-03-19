@@ -47,6 +47,7 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { syncSessionModel } from "@/pages/session/session-model-helpers"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
 import { TerminalPanel } from "@/pages/session/terminal-panel"
+import { isAudit } from "@/utils/edition"
 import { useSessionCommands } from "@/pages/session/use-session-commands"
 import { useSessionHashScroll } from "@/pages/session/use-session-hash-scroll"
 import { Identifier } from "@/utils/id"
@@ -1326,7 +1327,7 @@ export default function Page() {
 
   const line = (id: string) => {
     const text = draft(id)
-      .map((part) => (part.type === "image" ? `[image:${part.filename}]` : part.content))
+      .map((part) => (part.type === "image" ? `[image:${part.filename}]` : part.type === "document" ? `[doc:${part.filename}]` : part.content))
       .join("")
       .replace(/\s+/g, " ")
       .trim()
@@ -1397,6 +1398,7 @@ export default function Page() {
         if (part.type === "image") return `[image:${part.filename}]`
         if (part.type === "file") return `[file:${part.path}]`
         if (part.type === "agent") return `@${part.name}`
+        if (part.type === "document") return `[doc:${part.filename}]`
         return part.content
       })
       .join("")
@@ -1816,7 +1818,9 @@ export default function Page() {
         />
       </div>
 
-      <TerminalPanel />
+      <Show when={!isAudit}>
+        <TerminalPanel />
+      </Show>
     </div>
   )
 }

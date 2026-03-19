@@ -2,7 +2,7 @@ import { getFilename } from "@opencode-ai/util/path"
 import { type AgentPartInput, type FilePartInput, type Part, type TextPartInput } from "@opencode-ai/sdk/v2/client"
 import type { FileSelection } from "@/context/file"
 import { encodeFilePath } from "@/context/file/path"
-import type { AgentPart, FileAttachmentPart, ImageAttachmentPart, Prompt } from "@/context/prompt"
+import type { AgentPart, DocumentAttachmentPart, FileAttachmentPart, ImageAttachmentPart, Prompt } from "@/context/prompt"
 import { Identifier } from "@/utils/id"
 import { createCommentMetadata, formatCommentNote } from "@/utils/comment-note"
 
@@ -23,6 +23,7 @@ type BuildRequestPartsInput = {
   prompt: Prompt
   context: ContextFile[]
   images: ImageAttachmentPart[]
+  documents?: DocumentAttachmentPart[]
   text: string
   messageID: string
   sessionID: string
@@ -166,7 +167,19 @@ export function buildRequestParts(input: BuildRequestPartsInput) {
     } satisfies PromptRequestPart
   })
 
-  requestParts.push(...files, ...context, ...agents, ...images)
+  const documents = (input.documents ?? []).map((doc) => {
+    const isXlsx = doc.mime.includes("spreadsheet") || doc.mime.includes("ms-excel")
+    const toolName = isXlsx ? "xlsx_read" : "docx_read"
+    const path = doc.path.startsWith("data:") ? doc.filename : doc.path
+    return {
+      id: Identifier.ascending("part"),
+      type: "text",
+      text: `[Attached document: ${doc.filename}]\nPlease use the ${toolName} tool to read the file at path: ${path}`,
+      synthetic: true,
+    } satisfies PromptRequestPart
+  })
+
+  requestParts.push(...files, ...context, ...agents, ...images, ...documents)
 
   return {
     requestParts,

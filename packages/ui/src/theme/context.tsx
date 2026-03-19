@@ -7,11 +7,15 @@ import type { DesktopTheme } from "./types"
 
 export type ColorScheme = "light" | "dark" | "system"
 
+declare const __OPENCODE_EDITION__: string
+
+const prefix = __OPENCODE_EDITION__ === "audit" ? "audithelper" : "opencode"
+
 const STORAGE_KEYS = {
-  THEME_ID: "opencode-theme-id",
-  COLOR_SCHEME: "opencode-color-scheme",
-  THEME_CSS_LIGHT: "opencode-theme-css-light",
-  THEME_CSS_DARK: "opencode-theme-css-dark",
+  THEME_ID: `${prefix}-theme-id`,
+  COLOR_SCHEME: `${prefix}-color-scheme`,
+  THEME_CSS_LIGHT: `${prefix}-theme-css-light`,
+  THEME_CSS_DARK: `${prefix}-theme-css-dark`,
 } as const
 
 const THEME_STYLE_ID = "oc-theme"

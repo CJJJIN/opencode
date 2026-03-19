@@ -7,6 +7,9 @@ const host = process.env.TAURI_DEV_HOST
 export default defineConfig({
   plugins: [appPlugin],
   publicDir: "../app/public",
+  define: {
+    __OPENCODE_EDITION__: JSON.stringify(process.env.OPENCODE_EDITION ?? "standard"),
+  },
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
   // 1. prevent Vite from obscuring rust errors

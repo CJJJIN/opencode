@@ -1,12 +1,17 @@
 import "solid-js"
 
-interface ImportMetaEnv {
-  readonly VITE_OPENCODE_SERVER_HOST: string
-  readonly VITE_OPENCODE_SERVER_PORT: string
-}
+declare global {
+  /** Injected by Vite define — see vite.js and vite.config.ts */
+  const __OPENCODE_EDITION__: string
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv
+  interface ImportMetaEnv {
+    readonly VITE_OPENCODE_SERVER_HOST: string
+    readonly VITE_OPENCODE_SERVER_PORT: string
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv
+  }
 }
 
 declare module "solid-js" {
@@ -16,3 +21,5 @@ declare module "solid-js" {
     }
   }
 }
+
+export {}

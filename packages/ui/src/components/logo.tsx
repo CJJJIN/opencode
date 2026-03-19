@@ -1,6 +1,61 @@
 import { ComponentProps } from "solid-js"
 
+declare const __OPENCODE_EDITION__: string
+
+const isAudit = __OPENCODE_EDITION__ === "audit"
+
+const AuditMark = (props: { class?: string }) => {
+  return (
+    <svg
+      data-component="logo-mark"
+      classList={{ [props.class ?? ""]: !!props.class }}
+      viewBox="0 0 16 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width="16" height="20" rx="2" fill="var(--icon-strong-base)" />
+      <path d="M8 3L12 7H10V12H6V7H4L8 3Z" fill="var(--icon-weak-base)" />
+      <rect x="4" y="14" width="8" height="1.5" rx="0.5" fill="var(--icon-weak-base)" />
+      <rect x="4" y="16.5" width="6" height="1.5" rx="0.5" fill="var(--icon-weak-base)" />
+    </svg>
+  )
+}
+
+const AuditSplash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
+  return (
+    <svg
+      ref={props.ref}
+      data-component="logo-splash"
+      classList={{ [props.class ?? ""]: !!props.class }}
+      viewBox="0 0 80 100"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width="80" height="100" rx="8" fill="var(--icon-strong-base)" />
+      <path d="M40 15L60 35H50V60H30V35H20L40 15Z" fill="var(--icon-base)" />
+      <rect x="20" y="70" width="40" height="6" rx="2" fill="var(--icon-base)" />
+      <rect x="20" y="82" width="30" height="6" rx="2" fill="var(--icon-base)" />
+    </svg>
+  )
+}
+
+const AuditLogo = (props: { class?: string }) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 200 42"
+      fill="none"
+      classList={{ [props.class ?? ""]: !!props.class }}
+    >
+      <text x="0" y="30" font-family="system-ui, sans-serif" font-size="28" font-weight="700" fill="var(--icon-strong-base)">
+        AuditHelper
+      </text>
+    </svg>
+  )
+}
+
 export const Mark = (props: { class?: string }) => {
+  if (isAudit) return <AuditMark class={props.class} />
   return (
     <svg
       data-component="logo-mark"
@@ -16,6 +71,7 @@ export const Mark = (props: { class?: string }) => {
 }
 
 export const Splash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
+  if (isAudit) return <AuditSplash ref={props.ref} class={props.class} />
   return (
     <svg
       ref={props.ref}
@@ -32,6 +88,7 @@ export const Splash = (props: Pick<ComponentProps<"svg">, "ref" | "class">) => {
 }
 
 export const Logo = (props: { class?: string }) => {
+  if (isAudit) return <AuditLogo class={props.class} />
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

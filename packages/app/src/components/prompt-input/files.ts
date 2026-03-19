@@ -18,6 +18,15 @@ const TEXT_MIMES = new Set([
   "application/yaml",
 ])
 
+const DOCUMENT_EXTS = new Map([
+  ["docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  ["xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ["doc", "application/msword"],
+  ["xls", "application/vnd.ms-excel"],
+])
+
+const DOCUMENT_MIMES = new Set(DOCUMENT_EXTS.values())
+
 export const ACCEPTED_FILE_TYPES = [
   ...ACCEPTED_IMAGE_TYPES,
   "application/pdf",
@@ -29,6 +38,14 @@ export const ACCEPTED_FILE_TYPES = [
   "application/x-yaml",
   "application/xml",
   "application/yaml",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/msword",
+  "application/vnd.ms-excel",
+  ".docx",
+  ".xlsx",
+  ".doc",
+  ".xls",
   ".c",
   ".cc",
   ".cjs",
@@ -107,8 +124,12 @@ export async function attachmentMime(file: File) {
   const type = kind(file.type)
   if (IMAGE_MIMES.has(type)) return type
   if (type === "application/pdf") return type
+  if (DOCUMENT_MIMES.has(type)) return type
 
   const suffix = ext(file.name)
+  const docMime = DOCUMENT_EXTS.get(suffix)
+  if (docMime) return docMime
+
   const fallback = IMAGE_EXTS.get(suffix) ?? (suffix === "pdf" ? "application/pdf" : undefined)
   if ((!type || type === "application/octet-stream") && fallback) return fallback
 
@@ -116,4 +137,8 @@ export async function attachmentMime(file: File) {
   const bytes = new Uint8Array(await file.slice(0, SAMPLE).arrayBuffer())
   if (!textBytes(bytes)) return
   return "text/plain"
+}
+
+export function isDocumentMime(mime: string) {
+  return DOCUMENT_MIMES.has(mime)
 }

@@ -101,26 +101,31 @@ export namespace ToolRegistry {
     const config = await Config.get()
     const question = ["app", "cli", "desktop"].includes(Flag.OPENCODE_CLIENT) || Flag.OPENCODE_ENABLE_QUESTION_TOOL
 
+    const devTools = Flag.isAuditEdition
+      ? []
+      : [
+          BashTool,
+          GlobTool,
+          GrepTool,
+          EditTool,
+          WriteTool,
+          TaskTool,
+          CodeSearchTool,
+          SkillTool,
+          ApplyPatchTool,
+          ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
+          ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
+          ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [PlanExitTool] : []),
+        ]
+
     return [
       InvalidTool,
       ...(question ? [QuestionTool] : []),
-      BashTool,
       ReadTool,
-      GlobTool,
-      GrepTool,
-      EditTool,
-      WriteTool,
-      TaskTool,
       WebFetchTool,
       TodoWriteTool,
-      // TodoReadTool,
       WebSearchTool,
-      CodeSearchTool,
-      SkillTool,
-      ApplyPatchTool,
-      ...(Flag.OPENCODE_EXPERIMENTAL_LSP_TOOL ? [LspTool] : []),
-      ...(config.experimental?.batch_tool === true ? [BatchTool] : []),
-      ...(Flag.OPENCODE_EXPERIMENTAL_PLAN_MODE && Flag.OPENCODE_CLIENT === "cli" ? [PlanExitTool] : []),
+      ...devTools,
       ...custom,
     ]
   }

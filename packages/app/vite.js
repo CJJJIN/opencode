@@ -10,6 +10,9 @@ export default [
     name: "opencode-desktop:config",
     config() {
       return {
+        define: {
+          __OPENCODE_EDITION__: JSON.stringify(process.env.OPENCODE_EDITION ?? "standard"),
+        },
         resolve: {
           alias: {
             "@": fileURLToPath(new URL("./src", import.meta.url)),

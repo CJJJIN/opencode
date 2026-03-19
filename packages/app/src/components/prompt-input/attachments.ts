@@ -1,10 +1,10 @@
 import { onCleanup, onMount } from "solid-js"
 import { showToast } from "@opencode-ai/ui/toast"
-import { usePrompt, type ContentPart, type ImageAttachmentPart } from "@/context/prompt"
+import { usePrompt, type ContentPart, type ImageAttachmentPart, type DocumentAttachmentPart } from "@/context/prompt"
 import { useLanguage } from "@/context/language"
 import { uuid } from "@/utils/uuid"
 import { getCursorPosition } from "./editor-dom"
-import { attachmentMime } from "./files"
+import { attachmentMime, isDocumentMime } from "./files"
 import { normalizePaste, pasteMode } from "./paste"
 
 function dataUrl(file: File, mime: string) {
@@ -22,6 +22,13 @@ function dataUrl(file: File, mime: string) {
     })
     reader.readAsDataURL(file)
   })
+}
+
+const DOCUMENT_EXTS = new Set(["docx", "xlsx", "doc", "xls"])
+
+function isDocumentPath(filePath: string) {
+  const ext = filePath.split(".").pop()?.toLowerCase() ?? ""
+  return DOCUMENT_EXTS.has(ext)
 }
 
 type PromptAttachmentsInput = {
@@ -44,6 +51,21 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
     })
   }
 
+  const addDocumentByPath = (filePath: string, filename: string, mime: string) => {
+    const editor = input.editor()
+    if (!editor) return false
+    const attachment: DocumentAttachmentPart = {
+      type: "document",
+      id: uuid(),
+      filename,
+      mime,
+      path: filePath,
+    }
+    const cursor = prompt.cursor() ?? getCursorPosition(editor)
+    prompt.set([...prompt.current(), attachment], cursor)
+    return true
+  }
+
   const add = async (file: File, toast = true) => {
     const mime = await attachmentMime(file)
     if (!mime) {
@@ -53,6 +75,23 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
 
     const editor = input.editor()
     if (!editor) return false
+
+    // Document files: store as document attachment (path-based when available)
+    if (isDocumentMime(mime)) {
+      const attachment: DocumentAttachmentPart = {
+        type: "document",
+        id: uuid(),
+        filename: file.name,
+        mime,
+        // Web File objects don't have paths; store data URL as fallback
+        path: "",
+      }
+      const url = await dataUrl(file, mime)
+      if (url) attachment.path = url
+      const cursor = prompt.cursor() ?? getCursorPosition(editor)
+      prompt.set([...prompt.current(), attachment], cursor)
+      return true
+    }
 
     const url = await dataUrl(file, mime)
     if (!url) return false
@@ -73,7 +112,11 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
 
   const removeAttachment = (id: string) => {
     const current = prompt.current()
-    const next = current.filter((part) => part.type !== "image" || part.id !== id)
+    const next = current.filter((part) => {
+      if (part.type === "image") return part.id !== id
+      if (part.type === "document") return part.id !== id
+      return true
+    })
     prompt.set(next, prompt.cursor())
   }
 
@@ -161,6 +204,22 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
     const filePrefix = "file:"
     if (plainText?.startsWith(filePrefix)) {
       const filePath = plainText.slice(filePrefix.length)
+      // Document files dropped from OS file manager with path
+      if (isDocumentPath(filePath)) {
+        const ext = filePath.split(".").pop()?.toLowerCase() ?? ""
+        const mime =
+          ext === "docx"
+            ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            : ext === "xlsx"
+              ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              : ext === "doc"
+                ? "application/msword"
+                : "application/vnd.ms-excel"
+        const filename = filePath.split("/").pop() ?? filePath
+        input.focusEditor()
+        addDocumentByPath(filePath, filename, mime)
+        return
+      }
       input.focusEditor()
       input.addPart({ type: "file", path: filePath, content: "@" + filePath, start: 0, end: 0 })
       return
