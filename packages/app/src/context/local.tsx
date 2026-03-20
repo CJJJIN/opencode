@@ -7,6 +7,7 @@ import { useModels } from "@/context/models"
 import { useProviders } from "@/hooks/use-providers"
 import { modelEnabled, modelProbe } from "@/testing/model-selection"
 import { Persist, persisted } from "@/utils/persist"
+import { isAudit } from "@/utils/edition"
 import { cycleModelVariant, getConfiguredAgentVariant, resolveModelVariant } from "./model-variant"
 import { useSDK } from "./sdk"
 import { useSync } from "./sync"
@@ -222,6 +223,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const current = () => {
+      if (isAudit) {
+        const item = fallback()
+        if (!item) return undefined
+        return models.find(item)
+      }
+
       const item = firstModel(
         () => scope()?.model,
         () => agent.current()?.model,
@@ -242,13 +249,14 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const selected = () => scope()?.variant
+    const selectedVariant = () => (isAudit ? undefined : selected())
 
     const snapshot = () => {
       const model = current()
       return {
         agent: agent.current()?.name,
         model: model ? { providerID: model.provider.id, modelID: model.id } : undefined,
-        variant: selected(),
+        variant: selectedVariant(),
       } satisfies State
     }
 
@@ -290,12 +298,13 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         model.set({ providerID: entry.provider.id, modelID: entry.id })
       },
       set(item: ModelKey | undefined, options?: { recent?: boolean }) {
+        if (isAudit) return
         batch(() => {
           setStore("last", {
             type: "model",
             agent: agent.current()?.name,
             model: item ?? null,
-            variant: selected(),
+            variant: selectedVariant(),
           })
           write({ model: item })
           if (!item) return
@@ -312,7 +321,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       },
       variant: {
         configured,
-        selected,
+        selected: selectedVariant,
         current() {
           return resolveModelVariant({
             variants: this.list(),
@@ -326,6 +335,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           return Object.keys(item.variants)
         },
         set(value: string | undefined) {
+          if (isAudit) return
           batch(() => {
             const model = current()
             setStore("last", {

@@ -19,6 +19,7 @@ import { showToast } from "@opencode-ai/ui/toast"
 import { findLast } from "@opencode-ai/util/array"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { extractPromptFromParts } from "@/utils/prompt"
+import { isAudit } from "@/utils/edition"
 import { UserMessage } from "@opencode-ai/sdk/v2"
 import { useSessionLayout } from "@/pages/session/session-layout"
 
@@ -345,14 +346,18 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         disabled: !params.id,
         onSelect: () => navigateMessageByOffset(1),
       }),
-      modelCommand({
-        id: "model.choose",
-        title: language.t("command.model.choose"),
-        description: language.t("command.model.choose.description"),
-        keybind: "mod+'",
-        slash: "model",
-        onSelect: () => dialog.show(() => <DialogSelectModel model={local.model} />),
-      }),
+      ...(!isAudit
+        ? [
+            modelCommand({
+              id: "model.choose",
+              title: language.t("command.model.choose"),
+              description: language.t("command.model.choose.description"),
+              keybind: "mod+'",
+              slash: "model",
+              onSelect: () => dialog.show(() => <DialogSelectModel model={local.model} />),
+            }),
+          ]
+        : []),
       mcpCommand({
         id: "mcp.toggle",
         title: language.t("command.mcp.toggle"),
@@ -376,13 +381,17 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         keybind: "shift+mod+.",
         onSelect: () => local.agent.move(-1),
       }),
-      modelCommand({
-        id: "model.variant.cycle",
-        title: language.t("command.model.variant.cycle"),
-        description: language.t("command.model.variant.cycle.description"),
-        keybind: "shift+mod+d",
-        onSelect: () => local.model.variant.cycle(),
-      }),
+      ...(!isAudit
+        ? [
+            modelCommand({
+              id: "model.variant.cycle",
+              title: language.t("command.model.variant.cycle"),
+              description: language.t("command.model.variant.cycle.description"),
+              keybind: "shift+mod+d",
+              onSelect: () => local.model.variant.cycle(),
+            }),
+          ]
+        : []),
       permissionsCommand({
         id: "permissions.autoaccept",
         title: isAutoAcceptActive()

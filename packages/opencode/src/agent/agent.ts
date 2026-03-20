@@ -299,7 +299,7 @@ You cannot edit code, execute shell commands, or access the file system beyond r
   })
 
   export async function get(agent: string) {
-    return state().then((x) => x[agent])
+    return state().then((x) => x[agent] ?? Object.values(x).find((item) => item.name === agent))
   }
 
   export async function list() {

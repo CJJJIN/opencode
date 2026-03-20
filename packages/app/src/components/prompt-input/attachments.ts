@@ -1,6 +1,12 @@
 import { onCleanup, onMount } from "solid-js"
 import { showToast } from "@opencode-ai/ui/toast"
-import { usePrompt, type ContentPart, type ImageAttachmentPart, type DocumentAttachmentPart } from "@/context/prompt"
+import {
+  usePrompt,
+  type ContentPart,
+  type Prompt,
+  type ImageAttachmentPart,
+  type DocumentAttachmentPart,
+} from "@/context/prompt"
 import { useLanguage } from "@/context/language"
 import { uuid } from "@/utils/uuid"
 import { getCursorPosition } from "./editor-dom"
@@ -29,6 +35,52 @@ const DOCUMENT_EXTS = new Set(["docx", "xlsx", "doc", "xls"])
 function isDocumentPath(filePath: string) {
   const ext = filePath.split(".").pop()?.toLowerCase() ?? ""
   return DOCUMENT_EXTS.has(ext)
+}
+
+function promptLength(parts: Prompt) {
+  return parts.reduce((sum, part) => sum + ("content" in part ? part.content.length : 0), 0)
+}
+
+function relayout(parts: Prompt): Prompt {
+  let position = 0
+  return parts.map((part) => {
+    if (!("content" in part)) return { ...part }
+    const next = {
+      ...part,
+      start: position,
+      end: position + part.content.length,
+    }
+    position = next.end
+    return next
+  })
+}
+
+function withDocumentReference(parts: Prompt, filename: string) {
+  const reference = `《${filename}》`
+  const combined = parts.map((part) => ("content" in part ? part.content : "")).join("")
+  if (combined.includes(reference) || combined.includes(filename)) {
+    return relayout(parts)
+  }
+
+  const next = [...parts]
+  const addition = combined.trim().length === 0 ? reference : `${/[\s\n]$/.test(combined) ? "" : " "}${reference}`
+  const lastText = next.map((part, index) => ({ part, index })).findLast((entry) => entry.part.type === "text")
+
+  if (lastText && lastText.part.type === "text") {
+    next[lastText.index] = {
+      ...lastText.part,
+      content: lastText.part.content + addition,
+    }
+    return relayout(next)
+  }
+
+  next.push({
+    type: "text",
+    content: addition,
+    start: 0,
+    end: 0,
+  })
+  return relayout(next)
 }
 
 type PromptAttachmentsInput = {
@@ -61,8 +113,8 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
       mime,
       path: filePath,
     }
-    const cursor = prompt.cursor() ?? getCursorPosition(editor)
-    prompt.set([...prompt.current(), attachment], cursor)
+    const next = withDocumentReference([...prompt.current(), attachment], filename)
+    prompt.set(next, promptLength(next))
     return true
   }
 
@@ -88,8 +140,8 @@ export function createPromptAttachments(input: PromptAttachmentsInput) {
       }
       const url = await dataUrl(file, mime)
       if (url) attachment.path = url
-      const cursor = prompt.cursor() ?? getCursorPosition(editor)
-      prompt.set([...prompt.current(), attachment], cursor)
+      const next = withDocumentReference([...prompt.current(), attachment], file.name)
+      prompt.set(next, promptLength(next))
       return true
     }
 
