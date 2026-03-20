@@ -37,7 +37,7 @@ jobs:
       - name: Build Audit CLI Sidecar
         run: |
           cd packages/opencode
-          bun ./script/build.ts --single --baseline
+          bun ./script/build.ts --single
         env:
           OPENCODE_EDITION: audit
 
