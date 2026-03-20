@@ -10,8 +10,47 @@ on:
       - "audit/**"
 
 jobs:
+  build-cli:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+
+      - name: Cache Bun
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+            node_modules
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Audit CLI Sidecar
+        run: |
+          cd packages/opencode
+          bun ./script/build.ts --single
+        env:
+          OPENCODE_EDITION: audit
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-cli
+          path: packages/opencode/dist
+
   build-windows-audit:
     runs-on: windows-latest
+    needs: build-cli
 
     steps:
       - name: Checkout
@@ -24,6 +63,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
 
       - name: Cache Bun
         uses: actions/cache@v4
@@ -48,6 +89,15 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Prepare Windows sidecar
+        run: |
+          cd packages/desktop
+          bun ./scripts/prepare.ts
+        env:
+          RUST_TARGET: x86_64-pc-windows-msvc
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
 
       - name: Build Audit Windows App
         run: bun run build:audit
