@@ -20,7 +20,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.10
+          bun-version: latest
 
       - name: Cache Bun
         uses: actions/cache@v4
@@ -37,7 +37,7 @@ jobs:
       - name: Build Audit CLI Sidecar
         run: |
           cd packages/opencode
-          bun ./script/build.ts --single
+          bun ./script/build.ts --single --baseline
         env:
           OPENCODE_EDITION: audit
 
@@ -58,7 +58,7 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.3.10
+          bun-version: latest
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
