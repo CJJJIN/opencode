@@ -19,7 +19,6 @@ import {
 } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import type { FileNode } from "@opencode-ai/sdk/v2"
-import { isAudit } from "@/utils/edition"
 
 const MAX_DEPTH = 128
 
@@ -210,7 +209,6 @@ export default function FileTree(props: {
   _kinds?: ReadonlyMap<string, Kind>
   _chain?: readonly string[]
 }) {
-  if (isAudit) return null
   const file = useFile()
   const level = props.level ?? 0
   const draggable = () => props.draggable ?? true

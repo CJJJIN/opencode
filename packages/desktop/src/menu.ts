@@ -130,12 +130,12 @@ export async function createMenu(trigger: (id: string) => void) {
                   text: t("desktop.menu.view.toggleTerminal"),
                   accelerator: "Ctrl+`",
                 }),
-                await MenuItem.new({
-                  action: () => trigger("fileTree.toggle"),
-                  text: t("desktop.menu.view.toggleFileTree"),
-                }),
               ]
             : []),
+          await MenuItem.new({
+            action: () => trigger("fileTree.toggle"),
+            text: t("desktop.menu.view.toggleFileTree"),
+          }),
           await PredefinedMenuItem.new({
             item: "Separator",
           }),

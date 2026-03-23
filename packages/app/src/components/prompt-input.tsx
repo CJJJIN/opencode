@@ -29,6 +29,7 @@ import { Select } from "@opencode-ai/ui/select"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaid } from "@/components/dialog-select-model-unpaid"
+import { DialogConnectProvider } from "@/components/dialog-connect-provider"
 import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
 import { Persist, persisted } from "@/utils/persist"
@@ -56,6 +57,7 @@ import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
+import { onAuditProviderConnectedChange, readAuditProviderConnected } from "@/utils/audit-auth"
 import { isAudit } from "@/utils/edition"
 
 interface PromptInputProps {
@@ -251,6 +253,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const documentAttachments = createMemo(() =>
     prompt.current().filter((part): part is DocumentAttachmentPart => part.type === "document"),
   )
+  const [auditProviderReady, setAuditProviderReady] = createSignal(readAuditProviderConnected())
+
+  onCleanup(
+    onAuditProviderConnectedChange((value) => {
+      setAuditProviderReady(value)
+    }),
+  )
 
   const [store, setStore] = createStore<{
     popover: "at" | "slash" | null
@@ -418,6 +427,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const escBlur = () => platform.platform === "desktop" && platform.os === "macos"
 
   const pick = () => fileInputRef?.click()
+  const auditProviderID = createMemo(() => {
+    const configured = sync.data.config.model?.split("/")[0]
+    if (configured) return configured
+    return providers.all()[0]?.id
+  })
+  const auditProviderConnected = createMemo(() => {
+    if (!isAudit) return true
+    return auditProviderReady()
+  })
 
   const setMode = (mode: "normal" | "shell") => {
     setStore("mode", mode)
@@ -1454,95 +1472,92 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                     />
                   </TooltipKeybind>
                 </div>
-                <Show when={!isAudit}>
-                  <div data-component="prompt-model-control">
-                    <Show
-                      when={providers.paid().length > 0}
-                      fallback={
-                        <TooltipKeybind
-                          placement="top"
-                          gutter={4}
-                          title={language.t("command.model.choose")}
-                          keybind={command.keybind("model.choose")}
-                        >
-                          <Button
-                            data-action="prompt-model"
-                            as="div"
-                            variant="ghost"
-                            size="normal"
-                            class="min-w-0 max-w-[320px] text-13-regular text-text-base group"
-                            style={control()}
-                            onClick={() => dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)}
-                          >
-                            <Show when={local.model.current()?.provider?.id}>
-                              <ProviderIcon
-                                id={local.model.current()!.provider.id}
-                                class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
-                                style={{ "will-change": "opacity", transform: "translateZ(0)" }}
-                              />
-                            </Show>
-                            <span class="truncate">
-                              {local.model.current()?.name ?? language.t("dialog.model.select.title")}
-                            </span>
-                            <Icon name="chevron-down" size="small" class="shrink-0" />
-                          </Button>
-                        </TooltipKeybind>
-                      }
-                    >
+                <div data-component="prompt-model-control">
+                  <Show
+                    when={local.model.current() && (!isAudit || auditProviderConnected())}
+                    fallback={
                       <TooltipKeybind
                         placement="top"
                         gutter={4}
-                        title={language.t("command.model.choose")}
+                        title={isAudit ? "连接模型服务" : language.t("command.model.choose")}
                         keybind={command.keybind("model.choose")}
                       >
-                        <ModelSelectorPopover
-                          model={local.model}
-                          triggerAs={Button}
-                          triggerProps={{
-                            variant: "ghost",
-                            size: "normal",
-                            style: control(),
-                            class: "min-w-0 max-w-[320px] text-13-regular text-text-base group",
-                            "data-action": "prompt-model",
+                        <Button
+                          data-action="prompt-model"
+                          as="div"
+                          variant="ghost"
+                          size="normal"
+                          class="min-w-0 max-w-[320px] text-13-regular text-text-base group"
+                          style={control()}
+                          onClick={() => {
+                            if (isAudit && auditProviderID()) {
+                              dialog.show(() => <DialogConnectProvider provider={auditProviderID()!} />)
+                              return
+                            }
+                            dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)
                           }}
                         >
-                          <Show when={local.model.current()?.provider?.id}>
-                            <ProviderIcon
-                              id={local.model.current()!.provider.id}
-                              class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
-                              style={{ "will-change": "opacity", transform: "translateZ(0)" }}
-                            />
-                          </Show>
                           <span class="truncate">
-                            {local.model.current()?.name ?? language.t("dialog.model.select.title")}
+                            {isAudit ? "连接模型服务" : language.t("dialog.model.select.title")}
                           </span>
                           <Icon name="chevron-down" size="small" class="shrink-0" />
-                        </ModelSelectorPopover>
+                        </Button>
                       </TooltipKeybind>
-                    </Show>
-                  </div>
-                  <div data-component="prompt-variant-control">
+                    }
+                  >
                     <TooltipKeybind
                       placement="top"
                       gutter={4}
-                      title={language.t("command.model.variant.cycle")}
-                      keybind={command.keybind("model.variant.cycle")}
+                      title={language.t("command.model.choose")}
+                      keybind={command.keybind("model.choose")}
                     >
-                      <Select
-                        size="normal"
-                        options={variants()}
-                        current={local.model.variant.current() ?? "default"}
-                        label={(x) => (x === "default" ? language.t("common.default") : x)}
-                        onSelect={(x) => local.model.variant.set(x === "default" ? undefined : x)}
-                        class="capitalize max-w-[160px] text-text-base"
-                        valueClass="truncate text-13-regular text-text-base"
-                        triggerStyle={control()}
-                        triggerProps={{ "data-action": "prompt-model-variant" }}
-                        variant="ghost"
-                      />
+                      <ModelSelectorPopover
+                        model={local.model}
+                        triggerAs={Button}
+                        triggerProps={{
+                          variant: "ghost",
+                          size: "normal",
+                          style: control(),
+                          class: "min-w-0 max-w-[320px] text-13-regular text-text-base group",
+                          "data-action": "prompt-model",
+                        }}
+                      >
+                        <Show when={local.model.current()?.provider?.id}>
+                          <ProviderIcon
+                            id={local.model.current()!.provider.id}
+                            class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
+                            style={{ "will-change": "opacity", transform: "translateZ(0)" }}
+                          />
+                        </Show>
+                        <span class="truncate">
+                          {local.model.current()?.name ?? language.t("dialog.model.select.title")}
+                        </span>
+                        <Icon name="chevron-down" size="small" class="shrink-0" />
+                      </ModelSelectorPopover>
                     </TooltipKeybind>
-                  </div>
-                </Show>
+                  </Show>
+                </div>
+                <div data-component="prompt-variant-control">
+                  <TooltipKeybind
+                    placement="top"
+                    gutter={4}
+                    title={language.t("command.model.variant.cycle")}
+                    keybind={command.keybind("model.variant.cycle")}
+                  >
+                    <Select
+                      size="normal"
+                      options={variants()}
+                      current={local.model.variant.current() ?? "default"}
+                      label={(x) => (x === "default" ? language.t("common.default") : x)}
+                      onSelect={(x) => local.model.variant.set(x === "default" ? undefined : x)}
+                      class="capitalize max-w-[160px] text-text-base"
+                      valueClass="truncate text-13-regular text-text-base"
+                      triggerStyle={control()}
+                      triggerProps={{ "data-action": "prompt-model-variant" }}
+                      variant="ghost"
+                    />
+                  </TooltipKeybind>
+                </div>
                 <TooltipKeybind
                   placement="top"
                   gutter={8}

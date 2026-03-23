@@ -132,6 +132,10 @@ export const dict = {
   "provider.connect.apiKey.label": "{{provider}} API key",
   "provider.connect.apiKey.placeholder": "API key",
   "provider.connect.apiKey.required": "API key is required",
+  "provider.connect.audit.title": "Connect model service",
+  "provider.connect.audit.description": "Enter your access token to start audit analysis.",
+  "provider.connect.audit.token.label": "Access token",
+  "provider.connect.audit.token.placeholder": "Enter your access token",
   "provider.connect.opencodeZen.line1":
     "OpenCode Zen gives you access to a curated set of reliable optimized models for coding agents.",
   "provider.connect.opencodeZen.line2":

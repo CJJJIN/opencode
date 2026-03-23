@@ -8,6 +8,8 @@ import { createMemo, type Component, For, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
+import { writeAuditProviderConnected } from "@/utils/audit-auth"
+import { isAudit } from "@/utils/edition"
 import { DialogConnectProvider } from "./dialog-connect-provider"
 import { DialogSelectProvider } from "./dialog-select-provider"
 import { DialogCustomProvider } from "./dialog-custom-provider"
@@ -106,12 +108,14 @@ export const SettingsProviders: Component = () => {
   const disconnect = async (providerID: string, name: string) => {
     if (isConfigCustom(providerID)) {
       await globalSDK.client.auth.remove({ providerID }).catch(() => undefined)
+      if (isAudit && providerID === "aicodemirror-openai") writeAuditProviderConnected(false)
       await disableProvider(providerID, name)
       return
     }
     await globalSDK.client.auth
       .remove({ providerID })
       .then(async () => {
+        if (isAudit && providerID === "aicodemirror-openai") writeAuditProviderConnected(false)
         await globalSDK.client.global.dispose()
         showToast({
           variant: "success",

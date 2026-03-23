@@ -16,6 +16,8 @@ import { useLanguage } from "@/context/language"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePlatform } from "@/context/platform"
+import { writeAuditProviderConnected } from "@/utils/audit-auth"
+import { isAudit } from "@/utils/edition"
 import { DialogSelectModel } from "./dialog-select-model"
 import { DialogSelectProvider } from "./dialog-select-provider"
 
@@ -95,6 +97,7 @@ export function DialogConnectProvider(props: { provider: string }) {
   }
 
   const method = createMemo(() => (store.methodIndex !== undefined ? methods().at(store.methodIndex!) : undefined))
+  const auditMode = isAudit
 
   const methodLabel = (value?: { type?: string; label?: string }) => {
     if (!value) return ""
@@ -180,6 +183,7 @@ export function DialogConnectProvider(props: { provider: string }) {
 
   async function complete() {
     await globalSDK.client.global.dispose()
+    if (auditMode) writeAuditProviderConnected(true)
     dialog.close()
     showToast({
       variant: "success",
@@ -190,6 +194,10 @@ export function DialogConnectProvider(props: { provider: string }) {
   }
 
   function goBack() {
+    if (auditMode) {
+      dialog.close()
+      return
+    }
     if (methods().length === 1) {
       dialog.show(() => <DialogSelectProvider />)
       return
@@ -269,6 +277,11 @@ export function DialogConnectProvider(props: { provider: string }) {
     return (
       <div class="flex flex-col gap-6">
         <Switch>
+          <Match when={auditMode}>
+            <div class="text-14-regular text-text-base">
+              {language.t("provider.connect.audit.description", { provider: provider().name })}
+            </div>
+          </Match>
           <Match when={provider().id === "opencode"}>
             <div class="flex flex-col gap-4">
               <div class="text-14-regular text-text-base">{language.t("provider.connect.opencodeZen.line1")}</div>
@@ -291,9 +304,15 @@ export function DialogConnectProvider(props: { provider: string }) {
         <form onSubmit={handleSubmit} class="flex flex-col items-start gap-4">
           <TextField
             autofocus
-            type="text"
-            label={language.t("provider.connect.apiKey.label", { provider: provider().name })}
-            placeholder={language.t("provider.connect.apiKey.placeholder")}
+            type={auditMode ? "password" : "text"}
+            label={
+              auditMode
+                ? language.t("provider.connect.audit.token.label")
+                : language.t("provider.connect.apiKey.label", { provider: provider().name })
+            }
+            placeholder={
+              auditMode ? language.t("provider.connect.audit.token.placeholder") : language.t("provider.connect.apiKey.placeholder")
+            }
             name="apiKey"
             value={formStore.value}
             onChange={(v) => setFormStore("value", v)}
@@ -435,13 +454,17 @@ export function DialogConnectProvider(props: { provider: string }) {
   return (
     <Dialog
       title={
-        <IconButton
-          tabIndex={-1}
-          icon="arrow-left"
-          variant="ghost"
-          onClick={goBack}
-          aria-label={language.t("common.goBack")}
-        />
+        auditMode ? (
+          <div class="text-16-medium text-text-strong">{language.t("provider.connect.audit.title")}</div>
+        ) : (
+          <IconButton
+            tabIndex={-1}
+            icon="arrow-left"
+            variant="ghost"
+            onClick={goBack}
+            aria-label={language.t("common.goBack")}
+          />
+        )
       }
     >
       <div class="flex flex-col gap-6 px-2.5 pb-3">
@@ -449,6 +472,7 @@ export function DialogConnectProvider(props: { provider: string }) {
           <ProviderIcon id={props.provider} class="size-5 shrink-0 icon-strong-base" />
           <div class="text-16-medium text-text-strong">
             <Switch>
+              <Match when={auditMode}>{provider().name}</Match>
               <Match when={props.provider === "anthropic" && method()?.label?.toLowerCase().includes("max")}>
                 {language.t("provider.connect.title.anthropicProMax")}
               </Match>
@@ -457,8 +481,15 @@ export function DialogConnectProvider(props: { provider: string }) {
           </div>
         </div>
         <div class="px-2.5 pb-10 flex flex-col gap-6">
-          <div onKeyDown={handleKey} tabIndex={0} autofocus={store.methodIndex === undefined ? true : undefined}>
+          <div
+            onKeyDown={handleKey}
+            tabIndex={0}
+            autofocus={auditMode || store.methodIndex === undefined ? true : undefined}
+          >
             <Switch>
+              <Match when={auditMode}>
+                <ApiAuthView />
+              </Match>
               <Match when={store.methodIndex === undefined}>
                 <MethodSelection />
               </Match>

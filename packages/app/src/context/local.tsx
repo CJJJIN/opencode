@@ -223,12 +223,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const current = () => {
-      if (isAudit) {
-        const item = fallback()
-        if (!item) return undefined
-        return models.find(item)
-      }
-
       const item = firstModel(
         () => scope()?.model,
         () => agent.current()?.model,
@@ -249,7 +243,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const selected = () => scope()?.variant
-    const selectedVariant = () => (isAudit ? undefined : selected())
+    const selectedVariant = () => selected()
 
     const snapshot = () => {
       const model = current()
@@ -298,7 +292,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         model.set({ providerID: entry.provider.id, modelID: entry.id })
       },
       set(item: ModelKey | undefined, options?: { recent?: boolean }) {
-        if (isAudit) return
         batch(() => {
           setStore("last", {
             type: "model",
@@ -335,7 +328,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
           return Object.keys(item.variants)
         },
         set(value: string | undefined) {
-          if (isAudit) return
           batch(() => {
             const model = current()
             setStore("last", {

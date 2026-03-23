@@ -14,11 +14,14 @@ import { DialogSelectProvider } from "./dialog-select-provider"
 import { DialogManageModels } from "./dialog-manage-models"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
+import { isAudit } from "@/utils/edition"
 
 const isFree = (provider: string, cost: { input: number } | undefined) =>
   provider === "opencode" && (!cost || cost.input === 0)
 
 type ModelState = ReturnType<typeof useLocal>["model"]
+
+const auditModelPriority = ["gpt-5.3-codex"]
 
 const ModelList: Component<{
   provider?: string
@@ -46,7 +49,18 @@ const ModelList: Component<{
       items={models}
       current={model.current()}
       filterKeys={["provider.name", "name", "id"]}
-      sortBy={(a, b) => a.name.localeCompare(b.name)}
+      sortBy={(a, b) => {
+        if (isAudit && (!props.provider || props.provider === "aicodemirror-openai")) {
+          const aPriority = auditModelPriority.indexOf(a.id)
+          const bPriority = auditModelPriority.indexOf(b.id)
+          if (aPriority !== -1 || bPriority !== -1) {
+            const av = aPriority === -1 ? Number.MAX_SAFE_INTEGER : aPriority
+            const bv = bPriority === -1 ? Number.MAX_SAFE_INTEGER : bPriority
+            if (av !== bv) return av - bv
+          }
+        }
+        return a.name.localeCompare(b.name)
+      }}
       groupBy={(x) => x.provider.name}
       sortGroupsBy={(a, b) => {
         const aProvider = a.items[0].provider.id
@@ -159,6 +173,7 @@ export function ModelSelectorPopover(props: {
             onSelect={() => setStore("open", false)}
             class="p-1"
             action={
+              <Show when={!isAudit}>
               <div class="flex items-center gap-1">
                 <Tooltip placement="top" value={language.t("command.provider.connect")}>
                   <IconButton
@@ -181,6 +196,7 @@ export function ModelSelectorPopover(props: {
                   />
                 </Tooltip>
               </div>
+              </Show>
             }
           />
         </Kobalte.Content>
@@ -197,6 +213,7 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
     <Dialog
       title={language.t("dialog.model.select.title")}
       action={
+        <Show when={!isAudit}>
         <Button
           class="h-7 -my-1 text-14-medium"
           icon="plus-small"
@@ -205,16 +222,19 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
         >
           {language.t("command.provider.connect")}
         </Button>
+        </Show>
       }
     >
       <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />
-      <Button
-        variant="ghost"
-        class="ml-3 mt-5 mb-6 text-text-base self-start"
-        onClick={() => dialog.show(() => <DialogManageModels />)}
-      >
-        {language.t("dialog.model.manage")}
-      </Button>
+      <Show when={!isAudit}>
+        <Button
+          variant="ghost"
+          class="ml-3 mt-5 mb-6 text-text-base self-start"
+          onClick={() => dialog.show(() => <DialogManageModels />)}
+        >
+          {language.t("dialog.model.manage")}
+        </Button>
+      </Show>
     </Dialog>
   )
 }

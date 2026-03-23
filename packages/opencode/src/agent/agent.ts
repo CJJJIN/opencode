@@ -78,7 +78,7 @@ export namespace Agent {
     const result: Record<string, Info> = {
       build: Flag.isAuditEdition
         ? {
-            name: "audit",
+            name: "审计",
             description:
               "Document analysis agent. Specialized for reading, analyzing, and generating Word and Excel documents. Cannot edit code or execute shell commands.",
             options: {},
@@ -135,10 +135,10 @@ You cannot edit code, execute shell commands, or access the file system beyond r
             native: true,
           },
       plan: {
-        name: "plan",
+        name: Flag.isAuditEdition ? "规划" : "plan",
         description: "Plan mode. Disallows all edit tools.",
         options: {},
-        hidden: Flag.isAuditEdition,
+        hidden: false,
         permission: PermissionNext.merge(
           defaults,
           PermissionNext.fromConfig({

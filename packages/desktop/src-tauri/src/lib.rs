@@ -15,6 +15,7 @@ use crate::cli::CommandChild;
 use futures::{FutureExt, TryFutureExt};
 use std::{
     env,
+    fs,
     future::Future,
     net::TcpListener,
     path::PathBuf,
@@ -63,6 +64,50 @@ struct InitState {
 
 struct ServerState {
     child: Arc<Mutex<Option<CommandChild>>>,
+}
+
+fn ensure_audit_default_config() {
+    if !cfg!(feature = "audit-edition") {
+        return;
+    }
+
+    let Some(home) = dirs::home_dir() else {
+        tracing::error!("Failed to determine home directory for audit config");
+        return;
+    };
+
+    let config_dir = home.join(".config").join("audithelper");
+    let config_path = config_dir.join("opencode.jsonc");
+
+    if config_path.exists() {
+        return;
+    }
+
+    let config = r#"{
+  "$schema": "https://opencode.ai/config.json",
+  "enabled_providers": ["aicodemirror-openai"],
+  "model": "aicodemirror-openai/gpt-5.3-codex",
+  "provider": {
+    "aicodemirror-openai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "审计模型服务",
+      "options": {
+        "baseURL": "https://api.aicodemirror.com/api/codex/backend-api/codex/v1",
+        "setCacheKey": true
+      },
+      "models": {
+        "gpt-5.3-codex": {
+          "name": "GPT-5.3 Codex"
+        }
+      }
+    }
+  }
+}
+"#;
+
+    if let Err(err) = fs::create_dir_all(&config_dir).and_then(|_| fs::write(&config_path, config)) {
+        tracing::error!("Failed to write default audit config: {err}");
+    }
 }
 
 /// Resolves with sidecar credentials as soon as the sidecar is spawned (before health check).
@@ -417,6 +462,7 @@ struct LoadingWindowComplete;
 
 async fn initialize(app: AppHandle) {
     tracing::info!("Initializing app");
+    ensure_audit_default_config();
 
     let (init_tx, init_rx) = watch::channel(InitStep::ServerWaiting);
 

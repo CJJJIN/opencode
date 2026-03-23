@@ -57,6 +57,7 @@ import { setSessionHandoff } from "@/pages/session/handoff"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme"
 import { DialogSelectProvider } from "@/components/dialog-select-provider"
+import { DialogConnectProvider } from "@/components/dialog-connect-provider"
 import { DialogSelectServer } from "@/components/dialog-select-server"
 import { DialogSettings } from "@/components/dialog-settings"
 import { useCommand, type CommandOption } from "@/context/command"
@@ -1163,6 +1164,13 @@ export default function Layout(props: ParentProps) {
   })
 
   function connectProvider() {
+    if (isAudit) {
+      const providerID = globalSync.data.config.model?.split("/")[0] ?? globalSync.data.provider.all[0]?.id
+      if (providerID) {
+        dialog.show(() => <DialogConnectProvider provider={providerID} />)
+        return
+      }
+    }
     dialog.show(() => <DialogSelectProvider />)
   }
 
