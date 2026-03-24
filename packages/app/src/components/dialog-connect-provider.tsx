@@ -11,20 +11,26 @@ import { TextField } from "@opencode-ai/ui/text-field"
 import { showToast } from "@opencode-ai/ui/toast"
 import { createMemo, Match, onCleanup, onMount, Switch } from "solid-js"
 import { createStore, produce } from "solid-js/store"
+import { useParams } from "@solidjs/router"
 import { Link } from "@/components/link"
 import { useLanguage } from "@/context/language"
+import { useLocal } from "@/context/local"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePlatform } from "@/context/platform"
+import { normalizeProviderList } from "@/context/global-sync/utils"
 import { writeAuditProviderConnected } from "@/utils/audit-auth"
+import { decode64 } from "@/utils/base64"
 import { isAudit } from "@/utils/edition"
 import { DialogSelectModel } from "./dialog-select-model"
 import { DialogSelectProvider } from "./dialog-select-provider"
 
 export function DialogConnectProvider(props: { provider: string }) {
+  const params = useParams()
   const dialog = useDialog()
   const globalSync = useGlobalSync()
   const globalSDK = useGlobalSDK()
+  const local = useLocal()
   const platform = usePlatform()
   const language = useLanguage()
 
@@ -106,6 +112,7 @@ export function DialogConnectProvider(props: { provider: string }) {
 
   const method = createMemo(() => (store.methodIndex !== undefined ? methods().at(store.methodIndex!) : undefined))
   const auditMode = isAudit
+  const directory = createMemo(() => decode64(params.dir) ?? "")
 
   const methodLabel = (value?: { type?: string; label?: string }) => {
     if (!value) return ""
@@ -190,8 +197,30 @@ export function DialogConnectProvider(props: { provider: string }) {
   })
 
   async function complete() {
+    if (auditMode && props.provider === "aicodemirror-openai") {
+      writeAuditProviderConnected(true)
+    }
     await globalSDK.client.global.dispose()
-    if (auditMode) writeAuditProviderConnected(true)
+    await globalSync.bootstrap()
+    if (directory()) {
+      const directoryClient = globalSDK.createClient({
+        directory: directory(),
+        throwOnError: true,
+      })
+      const [, setChild] = globalSync.child(directory(), { bootstrap: false })
+      const [providerList, config] = await Promise.all([directoryClient.provider.list(), directoryClient.config.get()])
+      setChild("provider", normalizeProviderList(providerList.data!))
+      setChild("config", config.data!)
+    }
+    if (auditMode && props.provider === "aicodemirror-openai") {
+      local.model.set(
+        {
+          providerID: "aicodemirror-openai",
+          modelID: "gpt-5.3-codex",
+        },
+        { recent: true },
+      )
+    }
     dialog.close()
     showToast({
       variant: "success",
