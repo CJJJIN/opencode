@@ -59,6 +59,13 @@ console.log(`Loaded ${migrations.length} migrations`)
 const singleFlag = process.argv.includes("--single")
 const baselineFlag = process.argv.includes("--baseline")
 const skipInstall = process.argv.includes("--skip-install")
+const targetOsOverride = process.env.OPENCODE_BUILD_OS
+const targetArchOverride = process.env.OPENCODE_BUILD_ARCH as "arm64" | "x64" | undefined
+const targetAbiOverride = process.env.OPENCODE_BUILD_ABI
+const targetBaselineOverride =
+  process.env.OPENCODE_BUILD_BASELINE === undefined
+    ? undefined
+    : process.env.OPENCODE_BUILD_BASELINE === "true"
 
 const allTargets: {
   os: string
@@ -125,8 +132,21 @@ const allTargets: {
 
 const targets = singleFlag
   ? allTargets.filter((item) => {
-      if (item.os !== process.platform || item.arch !== process.arch) {
+      const targetOs = targetOsOverride ?? process.platform
+      const targetArch = targetArchOverride ?? process.arch
+      const targetAbi = targetAbiOverride
+      const targetBaseline = targetBaselineOverride
+
+      if (item.os !== targetOs || item.arch !== targetArch) {
         return false
+      }
+
+      if (targetAbi !== undefined && (item.abi ?? "") !== targetAbi) {
+        return false
+      }
+
+      if (targetBaseline !== undefined) {
+        return targetBaseline ? item.avx2 === false : item.avx2 !== false
       }
 
       // When building for the current platform, prefer a single native binary by default.

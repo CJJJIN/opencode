@@ -1,0 +1,117 @@
+name: Build AuditHelper Windows ARM64
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+      - "audit/**"
+
+jobs:
+  build-cli-arm64:
+    runs-on: windows-2025
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache Bun
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build Audit CLI Sidecar (ARM64)
+        run: |
+          cd packages/opencode
+          bun ./script/build.ts --single
+        env:
+          OPENCODE_EDITION: audit
+          OPENCODE_BUILD_OS: win32
+          OPENCODE_BUILD_ARCH: arm64
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-cli-arm64
+          path: packages/opencode/dist
+
+  build-windows-audit-arm64:
+    runs-on: windows-2025
+    needs: build-cli-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
+
+      - name: Cache Bun
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Cache Cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\.cargo\registry
+            ~\.cargo\git
+            packages\desktop\src-tauri\target
+          key: ${{ runner.os }}-cargo-arm64-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-arm64-
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Prepare Windows ARM64 sidecar
+        run: |
+          cd packages/desktop
+          bun ./scripts/prepare.ts
+        env:
+          RUST_TARGET: aarch64-pc-windows-msvc
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Build Audit Windows ARM64 App
+        run: bun --cwd packages/desktop tauri build -c src-tauri/tauri.audit.conf.json --target aarch64-pc-windows-msvc -- --features audit-edition
+
+      - name: Upload NSIS EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuditHelper-windows-arm64-exe
+          path: packages/desktop/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
+          if-no-files-found: warn
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: AuditHelper-windows-arm64-msi
+          path: packages/desktop/src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
+          if-no-files-found: warn
