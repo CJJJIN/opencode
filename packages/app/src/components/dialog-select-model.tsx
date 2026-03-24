@@ -2,6 +2,7 @@ import { Popover as Kobalte } from "@kobalte/core/popover"
 import { Component, ComponentProps, createMemo, JSX, Show, ValidComponent } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/context/local"
+import { useProviders } from "@/hooks/use-providers"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { popularProviders } from "@/hooks/use-providers"
 import { Button } from "@opencode-ai/ui/button"
@@ -15,7 +16,6 @@ import { DialogManageModels } from "./dialog-manage-models"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
 import { DialogConnectProvider } from "./dialog-connect-provider"
-import { readAuditProviderConnected } from "@/utils/audit-auth"
 import { isAudit } from "@/utils/edition"
 
 const isFree = (provider: string, cost: { input: number } | undefined) =>
@@ -103,6 +103,8 @@ export function ModelSelectorPopover(props: {
     dismiss: null,
   })
   const dialog = useDialog()
+  const providers = useProviders()
+  const auditProviderConnected = createMemo(() => providers.connected().some((item) => item.id === "aicodemirror-openai"))
 
   const handleManage = () => {
     setStore("open", false)
@@ -185,7 +187,7 @@ export function ModelSelectorPopover(props: {
               </div>
             }
           />
-          <Show when={isAudit && !readAuditProviderConnected()}>
+          <Show when={isAudit && !auditProviderConnected()}>
             <div class="px-1 pt-1 pb-1.5 border-t border-border-subtle">
               <Button
                 variant="ghost"
@@ -206,6 +208,8 @@ export function ModelSelectorPopover(props: {
 export const DialogSelectModel: Component<{ provider?: string }> = (props) => {
   const dialog = useDialog()
   const language = useLanguage()
+  const providers = useProviders()
+  const auditProviderConnected = createMemo(() => providers.connected().some((item) => item.id === "aicodemirror-openai"))
 
   return (
     <Dialog
@@ -222,7 +226,7 @@ export const DialogSelectModel: Component<{ provider?: string }> = (props) => {
       }
     >
       <ModelList provider={props.provider} onSelect={() => dialog.close()} />
-      <Show when={isAudit && !readAuditProviderConnected()}>
+      <Show when={isAudit && !auditProviderConnected()}>
         <Button
           variant="ghost"
           class="ml-3 mt-3 text-text-base self-start"

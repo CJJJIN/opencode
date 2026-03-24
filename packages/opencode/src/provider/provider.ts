@@ -850,6 +850,7 @@ export namespace Provider {
     }
 
     const providers: { [providerID: string]: Info } = {}
+    const connectedProviderIDs = new Set<ProviderID>()
     const languages = new Map<string, LanguageModelV2>()
     const modelLoaders: {
       [providerID: string]: CustomModelLoader
@@ -888,6 +889,10 @@ export namespace Provider {
       if (!match) return
       // @ts-expect-error
       providers[providerID] = mergeDeep(match, provider)
+    }
+
+    function markConnected(providerID: ProviderID) {
+      connectedProviderIDs.add(providerID)
     }
 
     // extend database from config
@@ -984,6 +989,7 @@ export namespace Provider {
         source: "env",
         key: provider.env.length === 1 ? apiKey : undefined,
       })
+      markConnected(providerID)
     }
 
     // load apikeys
@@ -995,6 +1001,7 @@ export namespace Provider {
           source: "api",
           key: provider.key,
         })
+        markConnected(providerID)
       }
     }
 
@@ -1023,6 +1030,7 @@ export namespace Provider {
         const opts = options ?? {}
         const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
+        markConnected(providerID)
       }
 
       // If this is github-copilot plugin, also register for github-copilot-enterprise if auth exists
@@ -1040,6 +1048,7 @@ export namespace Provider {
               ? { options: opts }
               : { source: "custom", options: opts }
             mergeProvider(enterpriseProviderID, patch)
+            markConnected(enterpriseProviderID)
           }
         }
       }
@@ -1060,6 +1069,7 @@ export namespace Provider {
         const opts = result.options ?? {}
         const patch: Partial<Info> = providers[providerID] ? { options: opts } : { source: "custom", options: opts }
         mergeProvider(providerID, patch)
+        if (result.autoload || connectedProviderIDs.has(providerID)) markConnected(providerID)
       }
     }
 
@@ -1121,6 +1131,7 @@ export namespace Provider {
     return {
       models: languages,
       providers,
+      connectedProviderIDs,
       sdk,
       modelLoaders,
       varsLoaders,
@@ -1129,6 +1140,14 @@ export namespace Provider {
 
   export async function list() {
     return state().then((state) => state.providers)
+  }
+
+  export async function connected() {
+    return state().then((state) =>
+      Object.fromEntries(
+        Object.entries(state.providers).filter(([providerID]) => state.connectedProviderIDs.has(ProviderID.make(providerID))),
+      ),
+    )
   }
 
   async function getSDK(model: Model) {

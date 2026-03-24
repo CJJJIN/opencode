@@ -19,7 +19,6 @@ import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { usePlatform } from "@/context/platform"
 import { normalizeProviderList } from "@/context/global-sync/utils"
-import { writeAuditProviderConnected } from "@/utils/audit-auth"
 import { decode64 } from "@/utils/base64"
 import { isAudit } from "@/utils/edition"
 import { DialogSelectModel } from "./dialog-select-model"
@@ -138,6 +137,27 @@ export function DialogConnectProvider(props: { provider: string }) {
     return fallback
   }
 
+  async function refreshProviderState() {
+    await globalSDK.client.global.dispose()
+    await globalSync.bootstrap()
+
+    if (directory()) {
+      const directoryClient = globalSDK.createClient({
+        directory: directory(),
+        throwOnError: true,
+      })
+      const [, setChild] = globalSync.child(directory(), { bootstrap: false })
+      const [providerList, config] = await Promise.all([directoryClient.provider.list(), directoryClient.config.get()])
+      setChild("provider", normalizeProviderList(providerList.data!))
+      setChild("config", config.data!)
+      return providerList.data!
+    }
+
+    const providerList = await globalSDK.client.provider.list({}, { throwOnError: true })
+    globalSync.set("provider", normalizeProviderList(providerList.data!))
+    return providerList.data!
+  }
+
   async function selectMethod(index: number) {
     if (timer.current !== undefined) {
       clearTimeout(timer.current)
@@ -197,29 +217,24 @@ export function DialogConnectProvider(props: { provider: string }) {
   })
 
   async function complete() {
+    let providerState = await refreshProviderState()
+
     if (auditMode && props.provider === "aicodemirror-openai") {
-      writeAuditProviderConnected(true)
-    }
-    await globalSDK.client.global.dispose()
-    await globalSync.bootstrap()
-    if (directory()) {
-      const directoryClient = globalSDK.createClient({
-        directory: directory(),
-        throwOnError: true,
-      })
-      const [, setChild] = globalSync.child(directory(), { bootstrap: false })
-      const [providerList, config] = await Promise.all([directoryClient.provider.list(), directoryClient.config.get()])
-      setChild("provider", normalizeProviderList(providerList.data!))
-      setChild("config", config.data!)
-    }
-    if (auditMode && props.provider === "aicodemirror-openai") {
-      local.model.set(
-        {
-          providerID: "aicodemirror-openai",
-          modelID: "gpt-5.3-codex",
-        },
-        { recent: true },
-      )
+      for (let attempt = 0; attempt < 5; attempt++) {
+        if (providerState.connected.includes("aicodemirror-openai")) break
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        providerState = await refreshProviderState()
+      }
+
+      if (providerState.connected.includes("aicodemirror-openai")) {
+        local.model.set(
+          {
+            providerID: "aicodemirror-openai",
+            modelID: "gpt-5.3-codex",
+          },
+          { recent: true },
+        )
+      }
     }
     dialog.close()
     showToast({

@@ -1,7 +1,5 @@
 import { useGlobalSync } from "@/context/global-sync"
-import { readAuditProviderConnected } from "@/utils/audit-auth"
 import { decode64 } from "@/utils/base64"
-import { isAudit } from "@/utils/edition"
 import { useParams } from "@solidjs/router"
 import { createMemo } from "solid-js"
 
@@ -16,7 +14,6 @@ export const popularProviders = [
   "vercel",
 ]
 const popularProviderSet = new Set(popularProviders)
-const AUDIT_PROVIDER_ID = "aicodemirror-openai"
 
 export function useProviders() {
   const globalSync = useGlobalSync()
@@ -33,22 +30,10 @@ export function useProviders() {
     all: () => providers().all,
     default: () => providers().default,
     popular: () => providers().all.filter((p) => popularProviderSet.has(p.id)),
-    connected: () => {
-      const connected = new Set(providers().connected)
-      return providers().all.filter((p) => {
-        if (!connected.has(p.id)) return false
-        if (isAudit && p.id === AUDIT_PROVIDER_ID && !readAuditProviderConnected()) return false
-        return true
-      })
-    },
-    paid: () => {
-      const connected = new Set(providers().connected)
-      return providers().all.filter(
-        (p) =>
-          connected.has(p.id) &&
-          (!isAudit || p.id !== AUDIT_PROVIDER_ID || readAuditProviderConnected()) &&
-          (p.id !== "opencode" || Object.values(p.models).some((m) => m.cost?.input)),
-      )
-    },
+    connected: () => providers().all.filter((p) => providers().connected.includes(p.id)),
+    paid: () =>
+      providers()
+        .all.filter((p) => providers().connected.includes(p.id))
+        .filter((p) => p.id !== "opencode" || Object.values(p.models).some((m) => m.cost?.input)),
   }
 }

@@ -48,7 +48,7 @@ export const ProviderRoutes = lazy(() =>
           }
         }
 
-        const connected = await Provider.list()
+        const connected = await Provider.connected()
         const providers = Object.assign(
           mapValues(filteredProviders, (x) => Provider.fromModelsDevProvider(x)),
           connected,

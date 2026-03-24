@@ -21,6 +21,7 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
   const dialog = useDialog()
   const providers = useProviders()
   const language = useLanguage()
+  const auditProviderConnected = createMemo(() => providers.connected().some((item) => item.id === "aicodemirror-openai"))
   const visibleModels = createMemo(() =>
     model.list().filter((item) => model.visible({ modelID: item.id, providerID: item.provider.id })),
   )
@@ -83,7 +84,7 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
           <div class="w-full flex flex-col items-start gap-4 px-1.5 pt-4 pb-4">
             <div class="px-2 text-14-medium text-text-base">{language.t("dialog.model.unpaid.addMore.title")}</div>
             <div class="w-full">
-              <Show when={isAudit}>
+              <Show when={isAudit && !auditProviderConnected()}>
                 <Button
                   variant="ghost"
                   class="w-full justify-start px-[11px] py-3.5 gap-4.5 text-14-medium"
