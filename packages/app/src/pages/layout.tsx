@@ -1165,7 +1165,7 @@ export default function Layout(props: ParentProps) {
 
   function connectProvider() {
     if (isAudit) {
-      const providerID = globalSync.data.config.model?.split("/")[0] ?? globalSync.data.provider.all[0]?.id
+      const providerID = "aicodemirror-openai"
       if (providerID) {
         dialog.show(() => <DialogConnectProvider provider={providerID} />)
         return

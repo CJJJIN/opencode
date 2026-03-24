@@ -428,6 +428,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
 
   const pick = () => fileInputRef?.click()
   const auditProviderID = createMemo(() => {
+    if (isAudit) return "aicodemirror-openai"
     const configured = sync.data.config.model?.split("/")[0]
     if (configured) return configured
     return providers.all()[0]?.id

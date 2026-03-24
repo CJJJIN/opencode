@@ -97,6 +97,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     })
 
     const validModel = (model: ModelKey) => {
+      if (isAudit && model.providerID !== AUDIT_PROVIDER_ID) return false
       const provider = providers.all().find((item) => item.id === model.providerID)
       return !!provider?.models[model.modelID] && connected().has(model.providerID)
     }
