@@ -85,12 +85,10 @@ fn ensure_audit_default_config() {
 
     let config = r#"{
   "$schema": "https://opencode.ai/config.json",
-  "enabled_providers": ["aicodemirror-openai"],
-  "model": "aicodemirror-openai/gpt-5.3-codex",
   "provider": {
     "aicodemirror-openai": {
       "npm": "@ai-sdk/openai-compatible",
-      "name": "审计模型服务",
+      "name": "我的模型服务",
       "options": {
         "baseURL": "https://api.aicodemirror.com/api/codex/backend-api/codex/v1",
         "setCacheKey": true

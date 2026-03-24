@@ -97,7 +97,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     })
 
     const validModel = (model: ModelKey) => {
-      if (isAudit && model.providerID !== AUDIT_PROVIDER_ID) return false
       const provider = providers.all().find((item) => item.id === model.providerID)
       return !!provider?.models[model.modelID] && connected().has(model.providerID)
     }
@@ -161,24 +160,31 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     }
 
-    const defaultModel = () => {
-      if (isAudit) {
-        if (!auditConnected()) return
-        const provider = providers.connected().find((item) => item.id === AUDIT_PROVIDER_ID)
-        if (!provider) return
+    const providerDefault = (providerID: string, options?: { freeOnly?: boolean }) => {
+      const provider = providers.connected().find((item) => item.id === providerID)
+      if (!provider) return
 
-        const defaults = providers.default()
-        const configured = defaults[provider.id]
-        if (configured) {
+      const defaults = providers.default()
+      const configured = defaults[provider.id]
+      if (configured) {
+        const match = provider.models[configured]
+        if (match && (!options?.freeOnly || (match.cost?.input ?? 0) === 0)) {
           const model = { providerID: provider.id, modelID: configured }
           if (validModel(model)) return model
         }
+      }
 
-        const first = Object.values(provider.models)[0]
-        if (!first) return
-        const model = { providerID: provider.id, modelID: first.id }
-        if (validModel(model)) return model
-        return
+      const first = Object.values(provider.models).find((item) =>
+        options?.freeOnly ? (item.cost?.input ?? 0) === 0 : true,
+      )
+      if (!first) return
+      const model = { providerID: provider.id, modelID: first.id }
+      if (validModel(model)) return model
+    }
+
+    const defaultModel = () => {
+      if (isAudit) {
+        return providerDefault("opencode", { freeOnly: true }) ?? (auditConnected() ? providerDefault(AUDIT_PROVIDER_ID) : undefined)
       }
 
       const defaults = providers.default()
@@ -196,13 +202,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     }
 
-    const fallback = createMemo<ModelKey | undefined>(() => {
-      if (isAudit) {
-        if (!auditConnected()) return
-        return configuredModel() ?? defaultModel()
-      }
-      return configuredModel() ?? recentModel() ?? defaultModel()
-    })
+    const fallback = createMemo<ModelKey | undefined>(() =>
+      isAudit ? configuredModel() ?? defaultModel() : configuredModel() ?? recentModel() ?? defaultModel(),
+    )
 
     const agent = {
       list,

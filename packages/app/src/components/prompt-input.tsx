@@ -1475,12 +1475,12 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
                 <div data-component="prompt-model-control">
                   <Show
-                    when={local.model.current() && (!isAudit || auditProviderConnected())}
+                    when={local.model.current()}
                     fallback={
                       <TooltipKeybind
                         placement="top"
                         gutter={4}
-                        title={isAudit ? "连接模型服务" : language.t("command.model.choose")}
+                        title={isAudit ? "选择模型" : language.t("command.model.choose")}
                         keybind={command.keybind("model.choose")}
                       >
                         <Button
@@ -1492,14 +1492,14 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           style={control()}
                           onClick={() => {
                             if (isAudit && auditProviderID()) {
-                              dialog.show(() => <DialogConnectProvider provider={auditProviderID()!} />)
+                              dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)
                               return
                             }
                             dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)
                           }}
                         >
                           <span class="truncate">
-                            {isAudit ? "连接模型服务" : language.t("dialog.model.select.title")}
+                            {isAudit ? "选择模型" : language.t("dialog.model.select.title")}
                           </span>
                           <Icon name="chevron-down" size="small" class="shrink-0" />
                         </Button>
@@ -1536,6 +1536,20 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         <Icon name="chevron-down" size="small" class="shrink-0" />
                       </ModelSelectorPopover>
                     </TooltipKeybind>
+                  </Show>
+                  <Show when={isAudit && !auditProviderReady() && auditProviderID()}>
+                    <Tooltip placement="top" gutter={4} value="连接我的模型服务">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="normal"
+                        class="text-13-regular text-text-base shrink-0"
+                        style={control()}
+                        onClick={() => dialog.show(() => <DialogConnectProvider provider={auditProviderID()!} />)}
+                      >
+                        连接我的模型服务
+                      </Button>
+                    </Tooltip>
                   </Show>
                 </div>
                 <div data-component="prompt-variant-control">
