@@ -157,6 +157,7 @@ export namespace Server {
           const providerID = c.req.valid("param").providerID
           const info = c.req.valid("json")
           await Auth.set(providerID, info)
+          await Instance.disposeAll()
           return c.json(true)
         },
       )
@@ -187,6 +188,7 @@ export namespace Server {
         async (c) => {
           const providerID = c.req.valid("param").providerID
           await Auth.remove(providerID)
+          await Instance.disposeAll()
           return c.json(true)
         },
       )

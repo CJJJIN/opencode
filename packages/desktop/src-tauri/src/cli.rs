@@ -559,10 +559,14 @@ pub fn serve(
 
     tracing::info!(port, "Spawning sidecar");
 
-    let envs = [
+    let mut envs = vec![
         ("OPENCODE_SERVER_USERNAME", "opencode".to_string()),
         ("OPENCODE_SERVER_PASSWORD", password.to_string()),
     ];
+
+    if cfg!(feature = "audit-edition") {
+        envs.push(("OPENCODE_EDITION", "audit".to_string()));
+    }
 
     let (events, child) = spawn_command(
         app,
