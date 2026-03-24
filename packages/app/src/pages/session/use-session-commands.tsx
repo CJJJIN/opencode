@@ -352,7 +352,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
         description: language.t("command.model.choose.description"),
         keybind: "mod+'",
         slash: "model",
-        onSelect: () => dialog.show(() => <DialogSelectModel model={local.model} />),
+        onSelect: () => dialog.show(() => <DialogSelectModel />),
       }),
       mcpCommand({
         id: "mcp.toggle",

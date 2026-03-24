@@ -5,13 +5,14 @@ import { List, type ListRef } from "@opencode-ai/ui/list"
 import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tag } from "@opencode-ai/ui/tag"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
-import { type Component, Show } from "solid-js"
+import { createMemo, type Component, Show } from "solid-js"
 import { useLocal } from "@/context/local"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
 import { DialogConnectProvider } from "./dialog-connect-provider"
 import { DialogSelectProvider } from "./dialog-select-provider"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
+import { isAudit } from "@/utils/edition"
 
 type ModelState = ReturnType<typeof useLocal>["model"]
 
@@ -20,6 +21,9 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
   const dialog = useDialog()
   const providers = useProviders()
   const language = useLanguage()
+  const visibleModels = createMemo(() =>
+    model.list().filter((item) => model.visible({ modelID: item.id, providerID: item.provider.id })),
+  )
 
   let listRef: ListRef | undefined
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -37,7 +41,7 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
         <List
           class="[&_[data-slot=list-scroll]]:overflow-visible"
           ref={(ref) => (listRef = ref)}
-          items={model.list}
+          items={visibleModels}
           current={model.current()}
           key={(x) => `${x.provider.id}:${x.id}`}
           itemWrapper={(item, node) => (
@@ -79,6 +83,16 @@ export const DialogSelectModelUnpaid: Component<{ model?: ModelState }> = (props
           <div class="w-full flex flex-col items-start gap-4 px-1.5 pt-4 pb-4">
             <div class="px-2 text-14-medium text-text-base">{language.t("dialog.model.unpaid.addMore.title")}</div>
             <div class="w-full">
+              <Show when={isAudit}>
+                <Button
+                  variant="ghost"
+                  class="w-full justify-start px-[11px] py-3.5 gap-4.5 text-14-medium"
+                  icon="plus-small"
+                  onClick={() => dialog.show(() => <DialogConnectProvider provider="aicodemirror-openai" />)}
+                >
+                  连接我的模型服务
+                </Button>
+              </Show>
               <List
                 class="w-full px-0"
                 key={(x) => x?.id}

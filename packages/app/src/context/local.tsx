@@ -99,6 +99,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
 
     const validModel = (model: ModelKey) => {
       if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(model.providerID)) return false
+      if (isAudit && model.providerID === AUDIT_PROVIDER_ID && !auditConnected()) return false
       const provider = providers.all().find((item) => item.id === model.providerID)
       return !!provider?.models[model.modelID] && connected().has(model.providerID)
     }
@@ -343,6 +344,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         })
       },
       visible(item: ModelKey) {
+        if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(item.providerID)) return false
+        if (isAudit && item.providerID === AUDIT_PROVIDER_ID && !auditConnected()) return false
         return models.visible(item)
       },
       setVisibility(item: ModelKey, visible: boolean) {

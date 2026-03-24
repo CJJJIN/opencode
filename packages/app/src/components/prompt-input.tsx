@@ -29,8 +29,6 @@ import { Select } from "@opencode-ai/ui/select"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaid } from "@/components/dialog-select-model-unpaid"
-import { DialogConnectProvider } from "@/components/dialog-connect-provider"
-import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
 import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
@@ -57,7 +55,6 @@ import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
-import { onAuditProviderConnectedChange, readAuditProviderConnected } from "@/utils/audit-auth"
 import { isAudit } from "@/utils/edition"
 
 interface PromptInputProps {
@@ -112,7 +109,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const layout = useLayout()
   const comments = useComments()
   const dialog = useDialog()
-  const providers = useProviders()
   const command = useCommand()
   const permission = usePermission()
   const language = useLanguage()
@@ -253,14 +249,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const documentAttachments = createMemo(() =>
     prompt.current().filter((part): part is DocumentAttachmentPart => part.type === "document"),
   )
-  const [auditProviderReady, setAuditProviderReady] = createSignal(readAuditProviderConnected())
-
-  onCleanup(
-    onAuditProviderConnectedChange((value) => {
-      setAuditProviderReady(value)
-    }),
-  )
-
   const [store, setStore] = createStore<{
     popover: "at" | "slash" | null
     historyIndex: number
@@ -427,12 +415,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const escBlur = () => platform.platform === "desktop" && platform.os === "macos"
 
   const pick = () => fileInputRef?.click()
-  const auditProviderID = createMemo(() => {
-    if (isAudit) return "aicodemirror-openai"
-    const configured = sync.data.config.model?.split("/")[0]
-    if (configured) return configured
-    return providers.all()[0]?.id
-  })
   const setMode = (mode: "normal" | "shell") => {
     setStore("mode", mode)
     setStore("popover", null)
@@ -1475,7 +1457,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       <TooltipKeybind
                         placement="top"
                         gutter={4}
-                        title={isAudit ? "选择模型" : language.t("command.model.choose")}
+                        title={language.t("command.model.choose")}
                         keybind={command.keybind("model.choose")}
                       >
                         <Button
@@ -1485,16 +1467,10 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           size="normal"
                           class="min-w-0 max-w-[320px] text-13-regular text-text-base group"
                           style={control()}
-                          onClick={() => {
-                            if (isAudit && auditProviderID()) {
-                              dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)
-                              return
-                            }
-                            dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)
-                          }}
+                          onClick={() => dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)}
                         >
                           <span class="truncate">
-                            {isAudit ? "选择模型" : language.t("dialog.model.select.title")}
+                            {language.t("dialog.model.select.title")}
                           </span>
                           <Icon name="chevron-down" size="small" class="shrink-0" />
                         </Button>
@@ -1508,7 +1484,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       keybind={command.keybind("model.choose")}
                     >
                       <ModelSelectorPopover
-                        model={local.model}
                         triggerAs={Button}
                         triggerProps={{
                           variant: "ghost",
@@ -1531,20 +1506,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         <Icon name="chevron-down" size="small" class="shrink-0" />
                       </ModelSelectorPopover>
                     </TooltipKeybind>
-                  </Show>
-                  <Show when={isAudit && auditProviderID()}>
-                    <Tooltip placement="top" gutter={4} value={auditProviderReady() ? "管理我的模型服务" : "连接我的模型服务"}>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="normal"
-                        class="text-13-regular text-text-base shrink-0"
-                        style={control()}
-                        onClick={() => dialog.show(() => <DialogConnectProvider provider={auditProviderID()!} />)}
-                      >
-                        {auditProviderReady() ? "我的模型服务" : "连接我的模型服务"}
-                      </Button>
-                    </Tooltip>
                   </Show>
                 </div>
                 <div data-component="prompt-variant-control">
