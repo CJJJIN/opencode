@@ -138,6 +138,9 @@ export function DialogConnectProvider(props: { provider: string }) {
   }
 
   async function refreshProviderState() {
+    if (directory()) {
+      await globalSDK.client.instance.dispose({ directory: directory() }).catch(() => undefined)
+    }
     await globalSDK.client.global.dispose()
     await globalSync.bootstrap()
 
