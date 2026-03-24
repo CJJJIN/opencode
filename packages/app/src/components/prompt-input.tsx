@@ -433,11 +433,6 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     if (configured) return configured
     return providers.all()[0]?.id
   })
-  const auditProviderConnected = createMemo(() => {
-    if (!isAudit) return true
-    return auditProviderReady()
-  })
-
   const setMode = (mode: "normal" | "shell") => {
     setStore("mode", mode)
     setStore("popover", null)
@@ -1537,8 +1532,8 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       </ModelSelectorPopover>
                     </TooltipKeybind>
                   </Show>
-                  <Show when={isAudit && !auditProviderReady() && auditProviderID()}>
-                    <Tooltip placement="top" gutter={4} value="连接我的模型服务">
+                  <Show when={isAudit && auditProviderID()}>
+                    <Tooltip placement="top" gutter={4} value={auditProviderReady() ? "管理我的模型服务" : "连接我的模型服务"}>
                       <Button
                         type="button"
                         variant="ghost"
@@ -1547,7 +1542,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                         style={control()}
                         onClick={() => dialog.show(() => <DialogConnectProvider provider={auditProviderID()!} />)}
                       >
-                        连接我的模型服务
+                        {auditProviderReady() ? "我的模型服务" : "连接我的模型服务"}
                       </Button>
                     </Tooltip>
                   </Show>

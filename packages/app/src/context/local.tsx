@@ -27,6 +27,7 @@ type Saved = {
 
 const WORKSPACE_KEY = "__workspace__"
 const AUDIT_PROVIDER_ID = "aicodemirror-openai"
+const AUDIT_ALLOWED_PROVIDER_IDS = new Set(["opencode", AUDIT_PROVIDER_ID])
 const handoff = new Map<string, State>()
 
 const handoffKey = (dir: string, id: string) => `${dir}\n${id}`
@@ -97,6 +98,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     })
 
     const validModel = (model: ModelKey) => {
+      if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(model.providerID)) return false
       const provider = providers.all().find((item) => item.id === model.providerID)
       return !!provider?.models[model.modelID] && connected().has(model.providerID)
     }
@@ -150,6 +152,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     const configuredModel = () => {
       if (!sync.data.config.model) return
       const [providerID, modelID] = sync.data.config.model.split("/")
+      if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(providerID)) return
       const model = { providerID, modelID }
       if (validModel(model)) return model
     }
