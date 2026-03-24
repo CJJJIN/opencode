@@ -8,6 +8,7 @@ import { useProviders } from "@/hooks/use-providers"
 import { modelEnabled, modelProbe } from "@/testing/model-selection"
 import { Persist, persisted } from "@/utils/persist"
 import { isAudit } from "@/utils/edition"
+import { readAuditProviderConnected } from "@/utils/audit-auth"
 import { cycleModelVariant, getConfiguredAgentVariant, resolveModelVariant } from "./model-variant"
 import { useSDK } from "./sdk"
 import { useSync } from "./sync"
@@ -25,6 +26,7 @@ type Saved = {
 }
 
 const WORKSPACE_KEY = "__workspace__"
+const AUDIT_PROVIDER_ID = "aicodemirror-openai"
 const handoff = new Map<string, State>()
 
 const handoffKey = (dir: string, id: string) => `${dir}\n${id}`
@@ -65,6 +67,9 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     const id = createMemo(() => params.id || undefined)
     const list = createMemo(() => sync.data.agent.filter((item) => item.mode !== "subagent" && !item.hidden))
     const connected = createMemo(() => new Set(providers.connected().map((item) => item.id)))
+    const auditConnected = createMemo(() =>
+      !isAudit ? false : connected().has(AUDIT_PROVIDER_ID) && readAuditProviderConnected(),
+    )
 
     const [saved, setSaved] = persisted(
       {
@@ -156,6 +161,25 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const defaultModel = () => {
+      if (isAudit) {
+        if (!auditConnected()) return
+        const provider = providers.connected().find((item) => item.id === AUDIT_PROVIDER_ID)
+        if (!provider) return
+
+        const defaults = providers.default()
+        const configured = defaults[provider.id]
+        if (configured) {
+          const model = { providerID: provider.id, modelID: configured }
+          if (validModel(model)) return model
+        }
+
+        const first = Object.values(provider.models)[0]
+        if (!first) return
+        const model = { providerID: provider.id, modelID: first.id }
+        if (validModel(model)) return model
+        return
+      }
+
       const defaults = providers.default()
       for (const provider of providers.connected()) {
         const configured = defaults[provider.id]
@@ -171,7 +195,13 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     }
 
-    const fallback = createMemo<ModelKey | undefined>(() => configuredModel() ?? recentModel() ?? defaultModel())
+    const fallback = createMemo<ModelKey | undefined>(() => {
+      if (isAudit) {
+        if (!auditConnected()) return
+        return configuredModel() ?? defaultModel()
+      }
+      return configuredModel() ?? recentModel() ?? defaultModel()
+    })
 
     const agent = {
       list,
