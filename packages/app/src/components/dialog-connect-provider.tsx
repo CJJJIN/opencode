@@ -232,7 +232,7 @@ export function DialogConnectProvider(props: { provider: string }) {
       if (!providerState.connected.includes("aicodemirror-openai")) {
         showToast({
           variant: "error",
-          icon: "triangle-alert",
+          icon: "circle-x",
           title: "连接模型服务失败",
           description: "访问令牌已保存，但模型服务尚未完成初始化，请稍后重试。",
         })
