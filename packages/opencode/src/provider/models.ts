@@ -14,6 +14,7 @@ import { Filesystem } from "../util/filesystem"
 export namespace ModelsDev {
   const log = Log.create({ service: "models.dev" })
   const filepath = path.join(Global.Path.cache, "models.json")
+  const AUDIT_PROVIDER_ID = "aicodemirror-openai"
 
   export const Model = z.object({
     id: z.string(),
@@ -81,6 +82,43 @@ export namespace ModelsDev {
 
   export type Provider = z.infer<typeof Provider>
 
+  function auditProvider(): Provider {
+    return {
+      id: AUDIT_PROVIDER_ID,
+      name: "我的模型服务",
+      api: "https://api.aicodemirror.com/api/codex/backend-api/codex/v1",
+      npm: "@ai-sdk/openai-compatible",
+      env: [],
+      models: {
+        "gpt-5.3-codex": {
+          id: "gpt-5.3-codex",
+          name: "GPT-5.3 Codex",
+          family: "gpt-5.3",
+          release_date: "2026-03-01",
+          attachment: true,
+          reasoning: true,
+          temperature: true,
+          tool_call: true,
+          cost: {
+            input: 0,
+            output: 0,
+            cache_read: 0,
+            cache_write: 0,
+          },
+          limit: {
+            context: 200000,
+            output: 32768,
+          },
+          modalities: {
+            input: ["text", "image", "pdf"],
+            output: ["text"],
+          },
+          options: {},
+        },
+      },
+    }
+  }
+
   function url() {
     return Flag.OPENCODE_MODELS_URL || "https://models.dev"
   }
@@ -99,8 +137,11 @@ export namespace ModelsDev {
   })
 
   export async function get() {
-    const result = await Data()
-    return result as Record<string, Provider>
+    const result = (await Data()) as Record<string, Provider>
+    if (Flag.isAuditEdition) {
+      result[AUDIT_PROVIDER_ID] = result[AUDIT_PROVIDER_ID] ?? auditProvider()
+    }
+    return result
   }
 
   export async function refresh() {

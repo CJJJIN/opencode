@@ -229,15 +229,23 @@ export function DialogConnectProvider(props: { provider: string }) {
         providerState = await refreshProviderState()
       }
 
-      if (providerState.connected.includes("aicodemirror-openai")) {
-        local.model.set(
-          {
-            providerID: "aicodemirror-openai",
-            modelID: "gpt-5.3-codex",
-          },
-          { recent: true },
-        )
+      if (!providerState.connected.includes("aicodemirror-openai")) {
+        showToast({
+          variant: "error",
+          icon: "triangle-alert",
+          title: "连接模型服务失败",
+          description: "访问令牌已保存，但模型服务尚未完成初始化，请稍后重试。",
+        })
+        return
       }
+
+      local.model.set(
+        {
+          providerID: "aicodemirror-openai",
+          modelID: "gpt-5.3-codex",
+        },
+        { recent: true },
+      )
     }
     dialog.close()
     showToast({
