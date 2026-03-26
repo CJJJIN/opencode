@@ -334,6 +334,11 @@ export namespace Config {
   }
 
   export async function needsInstall(dir: string) {
+    if (Flag.isAuditEdition) {
+      log.debug("audit edition: skipping config dependency install", { dir })
+      return false
+    }
+
     // Some config dirs may be read-only.
     // Installing deps there will fail; skip installation in that case.
     const writable = await isWritable(dir)
