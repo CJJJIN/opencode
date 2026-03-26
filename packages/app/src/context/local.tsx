@@ -7,7 +7,6 @@ import { useModels } from "@/context/models"
 import { useProviders } from "@/hooks/use-providers"
 import { modelEnabled, modelProbe } from "@/testing/model-selection"
 import { Persist, persisted } from "@/utils/persist"
-import { isAudit } from "@/utils/edition"
 import { cycleModelVariant, getConfiguredAgentVariant, resolveModelVariant } from "./model-variant"
 import { useSDK } from "./sdk"
 import { useSync } from "./sync"
@@ -25,8 +24,6 @@ type Saved = {
 }
 
 const WORKSPACE_KEY = "__workspace__"
-const AUDIT_PROVIDER_ID = "aicodemirror-openai"
-const AUDIT_ALLOWED_PROVIDER_IDS = new Set(["opencode", AUDIT_PROVIDER_ID])
 const handoff = new Map<string, State>()
 
 const handoffKey = (dir: string, id: string) => `${dir}\n${id}`
@@ -67,7 +64,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     const id = createMemo(() => params.id || undefined)
     const list = createMemo(() => sync.data.agent.filter((item) => item.mode !== "subagent" && !item.hidden))
     const connected = createMemo(() => new Set(providers.connected().map((item) => item.id)))
-    const auditConnected = createMemo(() => !isAudit ? false : connected().has(AUDIT_PROVIDER_ID))
 
     const [saved, setSaved] = persisted(
       {
@@ -95,8 +91,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     })
 
     const validModel = (model: ModelKey) => {
-      if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(model.providerID)) return false
-      if (isAudit && model.providerID === AUDIT_PROVIDER_ID && !auditConnected()) return false
       const provider = providers.all().find((item) => item.id === model.providerID)
       return !!provider?.models[model.modelID] && connected().has(model.providerID)
     }
@@ -150,7 +144,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     const configuredModel = () => {
       if (!sync.data.config.model) return
       const [providerID, modelID] = sync.data.config.model.split("/")
-      if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(providerID)) return
       const model = { providerID, modelID }
       if (validModel(model)) return model
     }
@@ -161,33 +154,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     }
 
-    const providerDefault = (providerID: string, options?: { freeOnly?: boolean }) => {
-      const provider = providers.connected().find((item) => item.id === providerID)
-      if (!provider) return
-
-      const defaults = providers.default()
-      const configured = defaults[provider.id]
-      if (configured) {
-        const match = provider.models[configured]
-        if (match && (!options?.freeOnly || (match.cost?.input ?? 0) === 0)) {
-          const model = { providerID: provider.id, modelID: configured }
-          if (validModel(model)) return model
-        }
-      }
-
-      const first = Object.values(provider.models).find((item) =>
-        options?.freeOnly ? (item.cost?.input ?? 0) === 0 : true,
-      )
-      if (!first) return
-      const model = { providerID: provider.id, modelID: first.id }
-      if (validModel(model)) return model
-    }
-
     const defaultModel = () => {
-      if (isAudit) {
-        return providerDefault("opencode", { freeOnly: true }) ?? (auditConnected() ? providerDefault(AUDIT_PROVIDER_ID) : undefined)
-      }
-
       const defaults = providers.default()
       for (const provider of providers.connected()) {
         const configured = defaults[provider.id]
@@ -203,9 +170,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       }
     }
 
-    const fallback = createMemo<ModelKey | undefined>(() =>
-      isAudit ? configuredModel() ?? defaultModel() : configuredModel() ?? recentModel() ?? defaultModel(),
-    )
+    const fallback = createMemo<ModelKey | undefined>(() => configuredModel() ?? recentModel() ?? defaultModel())
 
     const agent = {
       list,
@@ -227,10 +192,11 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             model: item.model,
             variant: item.variant ?? null,
           })
+          const prev = scope()
           const next = {
             agent: item.name,
-            model: item.model,
-            variant: item.variant,
+            model: item.model ?? prev?.model,
+            variant: item.variant ?? prev?.variant,
           } satisfies State
           const session = id()
           if (session) {
@@ -277,14 +243,13 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const selected = () => scope()?.variant
-    const selectedVariant = () => selected()
 
     const snapshot = () => {
       const model = current()
       return {
         agent: agent.current()?.name,
         model: model ? { providerID: model.provider.id, modelID: model.id } : undefined,
-        variant: selectedVariant(),
+        variant: selected(),
       } satisfies State
     }
 
@@ -331,7 +296,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
             type: "model",
             agent: agent.current()?.name,
             model: item ?? null,
-            variant: selectedVariant(),
+            variant: selected(),
           })
           write({ model: item })
           if (!item) return
@@ -341,8 +306,6 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         })
       },
       visible(item: ModelKey) {
-        if (isAudit && !AUDIT_ALLOWED_PROVIDER_IDS.has(item.providerID)) return false
-        if (isAudit && item.providerID === AUDIT_PROVIDER_ID && !auditConnected()) return false
         return models.visible(item)
       },
       setVisibility(item: ModelKey, visible: boolean) {
@@ -350,7 +313,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       },
       variant: {
         configured,
-        selected: selectedVariant,
+        selected,
         current() {
           return resolveModelVariant({
             variants: this.list(),

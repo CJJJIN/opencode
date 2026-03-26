@@ -29,6 +29,7 @@ import { Select } from "@opencode-ai/ui/select"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { ModelSelectorPopover } from "@/components/dialog-select-model"
 import { DialogSelectModelUnpaid } from "@/components/dialog-select-model-unpaid"
+import { useProviders } from "@/hooks/use-providers"
 import { useCommand } from "@/context/command"
 import { Persist, persisted } from "@/utils/persist"
 import { usePermission } from "@/context/permission"
@@ -55,7 +56,6 @@ import { PromptImageAttachments } from "./prompt-input/image-attachments"
 import { PromptDragOverlay } from "./prompt-input/drag-overlay"
 import { promptPlaceholder } from "./prompt-input/placeholder"
 import { ImagePreview } from "@opencode-ai/ui/image-preview"
-import { isAudit } from "@/utils/edition"
 
 interface PromptInputProps {
   class?: string
@@ -109,6 +109,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const layout = useLayout()
   const comments = useComments()
   const dialog = useDialog()
+  const providers = useProviders()
   const command = useCommand()
   const permission = usePermission()
   const language = useLanguage()
@@ -1452,7 +1453,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </div>
                 <div data-component="prompt-model-control">
                   <Show
-                    when={local.model.current()}
+                    when={providers.paid().length > 0}
                     fallback={
                       <TooltipKeybind
                         placement="top"
@@ -1469,8 +1470,15 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                           style={control()}
                           onClick={() => dialog.show(() => <DialogSelectModelUnpaid model={local.model} />)}
                         >
+                          <Show when={local.model.current()?.provider?.id}>
+                            <ProviderIcon
+                              id={local.model.current()?.provider?.id ?? ""}
+                              class="size-4 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity duration-150"
+                              style={{ "will-change": "opacity", transform: "translateZ(0)" }}
+                            />
+                          </Show>
                           <span class="truncate">
-                            {language.t("dialog.model.select.title")}
+                            {local.model.current()?.name ?? language.t("dialog.model.select.title")}
                           </span>
                           <Icon name="chevron-down" size="small" class="shrink-0" />
                         </Button>
@@ -1484,6 +1492,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                       keybind={command.keybind("model.choose")}
                     >
                       <ModelSelectorPopover
+                        model={local.model}
                         triggerAs={Button}
                         triggerProps={{
                           variant: "ghost",

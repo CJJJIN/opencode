@@ -2,7 +2,6 @@ import { Popover as Kobalte } from "@kobalte/core/popover"
 import { Component, ComponentProps, createMemo, JSX, Show, ValidComponent } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/context/local"
-import { useProviders } from "@/hooks/use-providers"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { popularProviders } from "@/hooks/use-providers"
 import { Button } from "@opencode-ai/ui/button"
@@ -15,25 +14,26 @@ import { DialogSelectProvider } from "./dialog-select-provider"
 import { DialogManageModels } from "./dialog-manage-models"
 import { ModelTooltip } from "./model-tooltip"
 import { useLanguage } from "@/context/language"
-import { DialogConnectProvider } from "./dialog-connect-provider"
-import { isAudit } from "@/utils/edition"
 
 const isFree = (provider: string, cost: { input: number } | undefined) =>
   provider === "opencode" && (!cost || cost.input === 0)
+
+type ModelState = ReturnType<typeof useLocal>["model"]
 
 const ModelList: Component<{
   provider?: string
   class?: string
   onSelect: () => void
   action?: JSX.Element
+  model?: ModelState
 }> = (props) => {
-  const local = useLocal()
+  const model = props.model ?? useLocal().model
   const language = useLanguage()
 
   const models = createMemo(() =>
-    local.model
+    model
       .list()
-      .filter((m) => local.model.visible({ modelID: m.id, providerID: m.provider.id }))
+      .filter((m) => model.visible({ modelID: m.id, providerID: m.provider.id }))
       .filter((m) => (props.provider ? m.provider.id === props.provider : true)),
   )
 
@@ -44,7 +44,7 @@ const ModelList: Component<{
       emptyMessage={language.t("dialog.model.empty")}
       key={(x) => `${x.provider.id}:${x.id}`}
       items={models}
-      current={local.model.current()}
+      current={model.current()}
       filterKeys={["provider.name", "name", "id"]}
       sortBy={(a, b) => a.name.localeCompare(b.name)}
       groupBy={(x) => x.provider.name}
@@ -66,7 +66,7 @@ const ModelList: Component<{
         </Tooltip>
       )}
       onSelect={(x) => {
-        local.model.set(x ? { modelID: x.id, providerID: x.provider.id } : undefined, {
+        model.set(x ? { modelID: x.id, providerID: x.provider.id } : undefined, {
           recent: true,
         })
         props.onSelect()
@@ -91,6 +91,7 @@ type ModelSelectorTriggerProps = Omit<ComponentProps<typeof Kobalte.Trigger>, "a
 
 export function ModelSelectorPopover(props: {
   provider?: string
+  model?: ModelState
   children?: JSX.Element
   triggerAs?: ValidComponent
   triggerProps?: ModelSelectorTriggerProps
@@ -103,8 +104,6 @@ export function ModelSelectorPopover(props: {
     dismiss: null,
   })
   const dialog = useDialog()
-  const providers = useProviders()
-  const auditProviderConnected = createMemo(() => providers.connected().some((item) => item.id === "aicodemirror-openai"))
 
   const handleManage = () => {
     setStore("open", false)
@@ -114,10 +113,6 @@ export function ModelSelectorPopover(props: {
   const handleConnectProvider = () => {
     setStore("open", false)
     dialog.show(() => <DialogSelectProvider />)
-  }
-  const handleConnectAuditProvider = () => {
-    setStore("open", false)
-    dialog.show(() => <DialogConnectProvider provider="aicodemirror-openai" />)
   }
   const language = useLanguage()
 
@@ -160,6 +155,7 @@ export function ModelSelectorPopover(props: {
           <Kobalte.Title class="sr-only">{language.t("dialog.model.select.title")}</Kobalte.Title>
           <ModelList
             provider={props.provider}
+            model={props.model}
             onSelect={() => setStore("open", false)}
             class="p-1"
             action={
@@ -187,29 +183,15 @@ export function ModelSelectorPopover(props: {
               </div>
             }
           />
-          <Show when={isAudit && !auditProviderConnected()}>
-            <div class="px-1 pt-1 pb-1.5 border-t border-border-subtle">
-              <Button
-                variant="ghost"
-                class="w-full justify-start text-13-medium"
-                icon="plus-small"
-                onClick={handleConnectAuditProvider}
-              >
-                连接我的模型服务
-              </Button>
-            </div>
-          </Show>
         </Kobalte.Content>
       </Kobalte.Portal>
     </Kobalte>
   )
 }
 
-export const DialogSelectModel: Component<{ provider?: string }> = (props) => {
+export const DialogSelectModel: Component<{ provider?: string; model?: ModelState }> = (props) => {
   const dialog = useDialog()
   const language = useLanguage()
-  const providers = useProviders()
-  const auditProviderConnected = createMemo(() => providers.connected().some((item) => item.id === "aicodemirror-openai"))
 
   return (
     <Dialog
@@ -225,17 +207,7 @@ export const DialogSelectModel: Component<{ provider?: string }> = (props) => {
         </Button>
       }
     >
-      <ModelList provider={props.provider} onSelect={() => dialog.close()} />
-      <Show when={isAudit && !auditProviderConnected()}>
-        <Button
-          variant="ghost"
-          class="ml-3 mt-3 text-text-base self-start"
-          icon="plus-small"
-          onClick={() => dialog.show(() => <DialogConnectProvider provider="aicodemirror-openai" />)}
-        >
-          连接我的模型服务
-        </Button>
-      </Show>
+      <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />
       <Button
         variant="ghost"
         class="ml-3 mt-5 mb-6 text-text-base self-start"
